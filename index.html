@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stichting Kijk Omhoog - Livestream Rooster</title>
+    <title>Rooster Techniek</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -197,8 +197,8 @@
 
 <div id="loginScreen" class="login-screen">
     <div class="login-box">
-        <h1>Stichting Kijk Omhoog</h1>
-        <p class="subtitle">Livestream rooster voor Techniek</p>
+        <h1>Rooster Techniek</h1>
+        <p class="subtitle">Livestream coördinatie</p>
         
         <div class="form-group">
             <label>Email</label>
@@ -214,7 +214,7 @@
             Deze app verwerkt jouw gegevens (naam, email, PIN, rol, beschikbaarheid). 
             Alle gegevens worden opgeslagen in jouw browser (niet op servers).
             Je hebt het recht om je account en alle gegevens te laten verwijderen.
-            Contactperson: beheerder@stichtingkijkomhoog.nl<br><br>
+            Neem contact op met de beheerder voor vragen.<br><br>
             Met inloggen accepteer je dit.
         </div>
         
@@ -252,8 +252,8 @@
 <div class="container" id="mainApp" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <div>
-            <h1>Stichting Kijk Omhoog</h1>
-            <p class="subtitle">Techniek Rooster</p>
+            <h1>Rooster Techniek</h1>
+            <p class="subtitle">Livestream coördinatie</p>
         </div>
         <button onclick="handleLogout()">Uitloggen</button>
     </div>
@@ -445,12 +445,23 @@
 </div>
 
 <script>
+// Initialiseer data
 let currentUser = null;
 let allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
 let allServices = JSON.parse(localStorage.getItem('bethel_services') || '[]');
 let allBlockouts = JSON.parse(localStorage.getItem('bethel_blockouts') || '[]');
 
+// Log voor debugging
+console.log('Geladen team:', allTeam);
+console.log('Admin exists:', allTeam.some(m => m.admin === true));
+
 function showAdminSetup() {
+    // Check of er al een admin bestaat
+    const adminExists = allTeam.some(m => m.admin === true);
+    if (adminExists) {
+        alert('Admin account bestaat al. Log in met je email en PIN.');
+        return;
+    }
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('adminSetup').style.display = 'flex';
 }
@@ -469,12 +480,19 @@ function createAdminAccount() {
         return;
     }
     
-    if (allTeam.some(m => m.email === email)) {
-        alert('Dit account bestaat al');
+    // Check als admin al bestaat
+    const adminExists = allTeam.some(m => m.admin === true);
+    if (adminExists) {
+        alert('Admin account bestaat al!');
         return;
     }
     
-    allTeam.push({
+    if (allTeam.some(m => m.email === email)) {
+        alert('Dit email adres is al in gebruik');
+        return;
+    }
+    
+    const adminAccount = {
         name: 'Admin',
         email: email,
         pin: pin,
@@ -482,10 +500,15 @@ function createAdminAccount() {
         status: '',
         admin: true,
         created: new Date().toISOString()
-    });
+    };
     
+    allTeam.push(adminAccount);
     localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-    alert('Admin account aangemaakt!\n\nEmail: ' + email + '\nPIN: ' + pin + '\n\nLog nu in.');
+    
+    // Reload de data om zeker te zijn
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    
+    alert('✅ Admin account aangemaakt!\n\nEmail: ' + email + '\nPIN: ' + pin + '\n\nLog nu in.');
     hideAdminSetup();
     document.getElementById('adminEmail').value = '';
     document.getElementById('adminPin').value = '';
@@ -500,9 +523,12 @@ function handleLogin() {
         return;
     }
     
+    // Reload data om zeker te zijn dat alles up-to-date is
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    
     const user = allTeam.find(m => m.email === email && m.pin === pin);
     if (!user) {
-        alert('Email of PIN incorrect');
+        alert('Email of PIN incorrect. Controleer je gegevens.');
         return;
     }
     
@@ -873,7 +899,7 @@ function exportAllData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'kijk-omhoog-backup-' + new Date().toISOString().split('T')[0] + '.json';
+    a.download = 'rooster-techniek-backup-' + new Date().toISOString().split('T')[0] + '.json';
     a.click();
 }
 

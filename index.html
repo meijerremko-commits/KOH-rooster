@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#2B5A7A">
     <meta name="description" content="Rooster Techniek - Kijk Omhoog">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%232B5A7A' width='180' height='180'/><circle cx='90' cy='50' r='20' fill='%2387CEEB'/><path d='M 90 75 Q 75 90 75 110 Q 75 130 90 140 Q 105 130 105 110 Q 105 90 90 75' fill='%2387CEEB'/><path d='M 90 120 L 70 100 M 90 120 L 110 100' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/><polygon points='90,30 95,45 85,45' fill='%23FFD700'/></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%232B5A7A' width='180' height='180' rx='40'/><circle cx='90' cy='50' r='20' fill='%2387CEEB'/><path d='M 90 75 Q 75 90 75 110 Q 75 130 90 140 Q 105 130 105 110 Q 105 90 90 75' fill='%2387CEEB'/><path d='M 90 120 L 70 100 M 90 120 L 110 100' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/><polygon points='90,30 95,45 85,45' fill='%23FFD700'/></svg>">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='0%' y2='100%'><stop offset='0%' style='stop-color:%2387CEEB;stop-opacity:1' /><stop offset='100%' style='stop-color:%235B8FC7;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='180' height='180'/><circle cx='90' cy='50' r='20' fill='%23FFFFFF'/><path d='M 90 75 Q 75 90 75 110 Q 75 130 90 140 Q 105 130 105 110 Q 105 90 90 75' fill='%23FFFFFF'/><path d='M 90 120 L 70 100 M 90 120 L 110 100' stroke='%232B5A7A' stroke-width='3' stroke-linecap='round'/><polygon points='90,30 95,45 85,45' fill='%23FFD700'/></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='0%' y2='100%'><stop offset='0%' style='stop-color:%2387CEEB;stop-opacity:1' /><stop offset='100%' style='stop-color:%235B8FC7;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='180' height='180' rx='40'/><circle cx='90' cy='50' r='20' fill='%23FFFFFF'/><path d='M 90 75 Q 75 90 75 110 Q 75 130 90 140 Q 105 130 105 110 Q 105 90 90 75' fill='%23FFFFFF'/><path d='M 90 120 L 70 100 M 90 120 L 110 100' stroke='%232B5A7A' stroke-width='3' stroke-linecap='round'/><polygon points='90,30 95,45 85,45' fill='%23FFD700'/></svg>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Rooster Techniek">
@@ -516,6 +520,13 @@ let currentUser = null;
 let allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
 let allServices = JSON.parse(localStorage.getItem('bethel_services') || '[]');
 let allBlockouts = JSON.parse(localStorage.getItem('bethel_blockouts') || '[]');
+
+// Register service worker voor PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {
+    // Service worker is optional
+  });
+}
 
 // Log voor debugging
 console.log('Geladen team:', allTeam);

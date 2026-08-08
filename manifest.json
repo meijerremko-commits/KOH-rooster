@@ -1,0 +1,33 @@
+{
+  "name": "Rooster Techniek - Kijk Omhoog",
+  "short_name": "Rooster Techniek",
+  "description": "Rooster en beheer techniek team voor livestreams",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2B5A7A",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='0%' y2='100%'><stop offset='0%' style='stop-color:%2387CEEB;stop-opacity:1' /><stop offset='100%' style='stop-color:%235B8FC7;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='192' height='192'/><circle cx='96' cy='55' r='22' fill='%23FFFFFF'/><path d='M 96 85 Q 75 105 75 130 Q 75 155 96 165 Q 117 155 117 130 Q 117 105 96 85' fill='%23FFFFFF'/><path d='M 96 135 L 70 105 M 96 135 L 122 105' stroke='%232B5A7A' stroke-width='4' stroke-linecap='round'/><polygon points='96,35 102,52 90,52' fill='%23FFD700'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='0%' y2='100%'><stop offset='0%' style='stop-color:%2387CEEB;stop-opacity:1' /><stop offset='100%' style='stop-color:%235B8FC7;stop-opacity:1' /></linearGradient></defs><rect fill='url(%23grad)' width='512' height='512'/><circle cx='256' cy='140' r='60' fill='%23FFFFFF'/><path d='M 256 220 Q 180 280 180 380 Q 180 440 256 470 Q 332 440 332 380 Q 332 280 256 220' fill='%23FFFFFF'/><path d='M 256 360 L 190 270 M 256 360 L 322 270' stroke='%232B5A7A' stroke-width='12' stroke-linecap='round'/><polygon points='256,80 275,140 237,140' fill='%23FFD700'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%2387CEEB' width='540' height='720'/><rect fill='%232B5A7A' y='0' width='540' height='80'/><text x='270' y='50' font-size='32' fill='white' text-anchor='middle' font-weight='bold'>Rooster Techniek</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ]
+}

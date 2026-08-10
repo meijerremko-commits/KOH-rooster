@@ -159,10 +159,15 @@
             font-weight: 600;
             margin-right: 5px;
         }
-        .badge.training { background: #FFF3CD; color: #856404; }
+        .badge.training { background: #CFF4FC; color: #055160; }
         .badge.unsuitable { background: #F8D7DA; color: #721c24; }
         .badge.reserve { background: #D1ECF1; color: #0c5460; }
         .badge.warning { background: #F8D7DA; color: #721c24; }
+        .badge.expert { background: #D4EDDA; color: #155724; font-weight: bold; }
+        .badge.good { background: #D1ECF1; color: #0c5460; }
+        .badge.competent { background: #CFE2FF; color: #084298; }
+        .badge.beginner { background: #FFF3CD; color: #856404; }
+        .badge.specialized { background: #E2E3E5; color: #41464b; }
         .modal {
             display: none;
             position: fixed;
@@ -290,8 +295,8 @@
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-            <p class="small-text" style="margin-bottom: 10px;">Eerste keer?</p>
-            <button style="width: 100%; padding: 12px;" onclick="showAdminSetup()">Admin Setup</button>
+            <p class="small-text" style="margin-bottom: 10px;">Nog geen account?</p>
+            <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
         </div>
     </div>
 </div>
@@ -318,6 +323,44 @@
     </div>
 </div>
 
+<div id="registrationScreen" class="login-screen" style="display: none;">
+    <div class="login-box">
+        <h1>Registratie</h1>
+        <p class="subtitle">Maak een team-lid account aan</p>
+        
+        <div class="info-box">
+            Na registratie moet de admin je account goedkeuren voordat je kunt inloggen.
+        </div>
+        
+        <div class="form-group">
+            <label>Voornaam</label>
+            <input type="text" id="regFirstName" placeholder="Voornaam">
+        </div>
+        <div class="form-group">
+            <label>Achternaam</label>
+            <input type="text" id="regLastName" placeholder="Achternaam">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="regEmail" placeholder="jouw@mail.nl">
+        </div>
+        <div class="form-group">
+            <label>Telefoonnummer</label>
+            <input type="tel" id="regPhone" placeholder="+31 6 12345678">
+        </div>
+        <div class="form-group">
+            <label>Geboortedatum</label>
+            <input type="date" id="regBirthDate">
+        </div>
+        <div class="form-group">
+            <label>Kies een PIN (4 cijfers)</label>
+            <input type="password" id="regPin" placeholder="1234" maxlength="4">
+        </div>
+        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="submitRegistration()">Registreren</button>
+        <button style="width: 100%; padding: 12px;" onclick="hideRegistration()">Terug</button>
+    </div>
+</div>
+
 <div class="container" id="mainApp" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <div>
@@ -331,6 +374,7 @@
     <div id="adminDashboard" style="display: none;">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchAdminTab('overview')">Overzicht</button>
+            <button class="tab-btn" onclick="switchAdminTab('requests')">Registraties</button>
             <button class="tab-btn" onclick="switchAdminTab('team')">Team</button>
             <button class="tab-btn" onclick="switchAdminTab('services')">Diensten</button>
             <button class="tab-btn" onclick="switchAdminTab('admin')">Admin</button>
@@ -362,6 +406,11 @@
                 <h2>Block-outs</h2>
                 <div id="allBlockouts"></div>
             </div>
+        </div>
+
+        <!-- REGISTRATIE VERZOEKEN -->
+        <div id="requestsTab" class="tab-content">
+            <div id="registrationRequests"></div>
         </div>
 
         <!-- TEAM MANAGEMENT -->
@@ -407,6 +456,28 @@
         </div>
 
         <div class="card">
+            <h2>Instellingen</h2>
+            <div class="form-group">
+                <label>Herinneringen inschakelen</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enableReminders" onchange="saveReminderSettings()">
+                    <label style="margin: 0;">Meldingen voor diensten</label>
+                </div>
+            </div>
+            <div class="form-group" id="reminderSettings" style="display: none;">
+                <label>Herinnering vóór dienst</label>
+                <select id="reminderHours" onchange="saveReminderSettings()">
+                    <option value="0">Direct als dienst begint</option>
+                    <option value="1">1 uur van tevoren</option>
+                    <option value="12">12 uur van tevoren</option>
+                    <option value="24">1 dag van tevoren (standaard)</option>
+                    <option value="48">2 dagen van tevoren</option>
+                </select>
+            </div>
+            <button onclick="testReminder()" style="width: 100%; padding: 12px; margin-top: 10px;">Test herinnering</button>
+        </div>
+
+        <div class="card">
             <h2>Jouw status</h2>
             <div id="myStatus"></div>
         </div>
@@ -448,12 +519,17 @@
             <input type="password" id="teamPin" placeholder="kies een PIN">
         </div>
         <div class="form-group">
-            <label>Status (optioneel)</label>
+            <label>Status</label>
             <select id="teamStatus">
                 <option value="">Geen</option>
-                <option value="training">Training nodig</option>
-                <option value="unsuitable">Niet geschikt</option>
-                <option value="reserve">Reserve</option>
+                <option value="expert">🌟 Expert</option>
+                <option value="good">✅ Goed</option>
+                <option value="competent">👍 Competent</option>
+                <option value="beginner">📚 Beginner</option>
+                <option value="training">🎓 In Training</option>
+                <option value="specialized">🔧 Gespecialiseerd</option>
+                <option value="reserve">🔄 Reserve</option>
+                <option value="unsuitable">❌ Niet Geschikt</option>
             </select>
         </div>
         <div class="modal-buttons">
@@ -526,6 +602,68 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {
     // Service worker is optional
   });
+}
+
+function showRegistration() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('registrationScreen').style.display = 'flex';
+}
+
+function hideRegistration() {
+    document.getElementById('registrationScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function submitRegistration() {
+    const firstName = document.getElementById('regFirstName').value.trim();
+    const lastName = document.getElementById('regLastName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const phone = document.getElementById('regPhone').value.trim();
+    const birthDate = document.getElementById('regBirthDate').value;
+    const pin = document.getElementById('regPin').value.trim();
+    
+    if (!firstName || !lastName || !email || !pin || !birthDate) {
+        alert('Alle velden zijn verplicht');
+        return;
+    }
+    
+    if (pin.length !== 4 || isNaN(pin)) {
+        alert('PIN moet 4 cijfers zijn');
+        return;
+    }
+    
+    if (allTeam.some(m => m.email === email)) {
+        alert('Dit email adres is al in gebruik');
+        return;
+    }
+    
+    // Maak pending account aan (wacht op admin goedkeuring)
+    const registrationRequest = {
+        name: firstName + ' ' + lastName,
+        email: email,
+        phone: phone,
+        birthDate: birthDate,
+        pin: pin,
+        role: 'Pending',
+        status: '',
+        admin: false,
+        approved: false,
+        created: new Date().toISOString()
+    };
+    
+    allTeam.push(registrationRequest);
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    
+    alert('✅ Registratie aangevraagd!\n\nJe account wacht op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
+    hideRegistration();
+    
+    // Clear form
+    document.getElementById('regFirstName').value = '';
+    document.getElementById('regLastName').value = '';
+    document.getElementById('regEmail').value = '';
+    document.getElementById('regPhone').value = '';
+    document.getElementById('regBirthDate').value = '';
+    document.getElementById('regPin').value = '';
 }
 
 // Log voor debugging
@@ -622,6 +760,12 @@ function handleLogin() {
         return;
     }
     
+    // Check of account goedgekeurd is (admins en goedgekeurde leden kunnen inloggen)
+    if (!user.admin && user.role === 'Pending') {
+        alert('Je account wacht nog op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
+        return;
+    }
+    
     currentUser = user;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('adminSetup').style.display = 'none';
@@ -635,6 +779,14 @@ function handleLogin() {
         document.getElementById('adminDashboard').style.display = 'none';
         document.getElementById('teamView').style.display = 'block';
         renderTeamView();
+        
+        // Check reminders elke minuut
+        setInterval(() => {
+            const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false}');
+            if (reminderSettings.enabled) {
+                scheduleReminders();
+            }
+        }, 60 * 1000);
     }
     
     document.getElementById('loginEmail').value = '';
@@ -654,12 +806,13 @@ function switchAdminTab(tab) {
     document.getElementById(tab + 'Tab').classList.add('active');
     event.target.classList.add('active');
     
+    if (tab === 'requests') renderRegistrationRequests();
     if (tab === 'team') renderTeamList();
     if (tab === 'services') renderServicesList();
 }
 
 function renderAdminDashboard() {
-    document.getElementById('teamCount').textContent = allTeam.filter(m => !m.admin).length;
+    document.getElementById('teamCount').textContent = allTeam.filter(m => !m.admin && m.role !== 'Pending').length;
     document.getElementById('serviceCount').textContent = allServices.length;
     document.getElementById('blockoutCount').textContent = allBlockouts.length;
     
@@ -687,24 +840,93 @@ function renderAdminDashboard() {
         '<p style="color: #999;">Geen block-outs</p>';
 }
 
+function renderRegistrationRequests() {
+    const requests = allTeam.filter(m => m.role === 'Pending');
+    
+    if (requests.length === 0) {
+        document.getElementById('registrationRequests').innerHTML = '<p style="color: #999;">Geen registratieverzoeken</p>';
+        return;
+    }
+    
+    const html = requests.map((req, idx) => `
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <strong>${req.name}</strong><br>
+                    <small style="color: #666;">
+                        Email: ${req.email}<br>
+                        Telefoon: ${req.phone}<br>
+                        Geboortedatum: ${new Date(req.birthDate).toLocaleDateString('nl-NL')}<br>
+                        Aangemeld: ${new Date(req.created).toLocaleDateString('nl-NL')}
+                    </small>
+                </div>
+                <div style="display: flex; gap: 5px; flex-direction: column;">
+                    <button class="primary" onclick="approveRegistration('${req.email}')" style="padding: 6px 12px;">Goedkeuren</button>
+                    <button class="danger" onclick="rejectRegistration('${req.email}')" style="padding: 6px 12px;">Afwijzen</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('registrationRequests').innerHTML = html;
+}
+
+function approveRegistration(email) {
+    const member = allTeam.find(m => m.email === email);
+    if (!member) return;
+    
+    // Zet rol standaard op Video als niet ingesteld
+    member.role = 'Video';
+    member.approved = true;
+    
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
+    
+    renderRegistrationRequests();
+    renderTeamList();
+    renderAdminDashboard();
+}
+
+function rejectRegistration(email) {
+    if (!confirm('Registratie afwijzen?')) return;
+    
+    allTeam = allTeam.filter(m => m.email !== email);
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    
+    alert('Registratie afgewezen');
+    renderRegistrationRequests();
+    renderAdminDashboard();
+}
+
 function renderTeamList() {
-    const html = allTeam.filter(m => !m.admin).map(member => {
+    const html = allTeam.filter(m => !m.admin && m.role !== 'Pending').map(member => {
         let rolesText = member.role;
         if (member.role === 'Techniek Lead') {
             rolesText = 'Techniek Lead (alle rollen)';
         }
         return `
-        <div class="team-member">
-            <div style="flex: 1;">
+        <div class="team-member" style="flex-direction: column; align-items: start;">
+            <div style="width: 100%; margin-bottom: 10px;">
                 <strong>${member.name}</strong><br>
-                <small style="color: #666;">${member.email} • ${rolesText}</small>
+                <small style="color: #666;">
+                    Email: ${member.email}<br>
+                    Telefoon: ${member.phone || '–'}<br>
+                    Geboortedatum: ${member.birthDate ? new Date(member.birthDate).toLocaleDateString('nl-NL') : '–'}<br>
+                    Rol: ${rolesText}
+                </small>
                 ${member.status ? '<br><span class="badge badge-' + member.status + '">' + 
-                    (member.status === 'training' ? 'Training nodig' : 
-                     member.status === 'unsuitable' ? 'Niet geschikt' : 'Reserve') + '</span>' : ''}
+                    (member.status === 'expert' ? '🌟 Expert' :
+                     member.status === 'good' ? '✅ Goed' :
+                     member.status === 'competent' ? '👍 Competent' :
+                     member.status === 'beginner' ? '📚 Beginner' :
+                     member.status === 'training' ? '🎓 In Training' :
+                     member.status === 'specialized' ? '🔧 Gespecialiseerd' :
+                     member.status === 'reserve' ? '🔄 Reserve' :
+                     member.status === 'unsuitable' ? '❌ Niet Geschikt' : member.status) + '</span>' : ''}
             </div>
-            <div style="display: flex; gap: 5px;">
-                <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px;">Bewerk</button>
-                <button class="danger" onclick="deleteTeamMember('${member.email}')" style="padding: 6px 12px;">Verwijder</button>
+            <div style="display: flex; gap: 5px; width: 100%;">
+                <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Bewerk</button>
+                <button class="danger" onclick="deleteTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Verwijder</button>
             </div>
         </div>
     `;
@@ -766,12 +988,110 @@ function renderTeamView() {
         `).join('') :
         '<p style="color: #999;">Geen block-outs</p>';
     
-    if (currentUser.status) {
-        const statusText = currentUser.status === 'training' ? 'Training nodig' :
-                          currentUser.status === 'unsuitable' ? 'Niet geschikt' : 'Reserve';
+    if (currentUser.status && currentUser.status !== 'unsuitable') {
+        const statusText = currentUser.status === 'expert' ? '🌟 Expert' :
+                          currentUser.status === 'good' ? '✅ Goed' :
+                          currentUser.status === 'competent' ? '👍 Competent' :
+                          currentUser.status === 'beginner' ? '📚 Beginner' :
+                          currentUser.status === 'training' ? '🎓 In Training' :
+                          currentUser.status === 'specialized' ? '🔧 Gespecialiseerd' :
+                          currentUser.status === 'reserve' ? '🔄 Reserve' : currentUser.status;
         document.getElementById('myStatus').innerHTML = `<span class="badge badge-${currentUser.status}">${statusText}</span>`;
     } else {
         document.getElementById('myStatus').innerHTML = '<p style="color: #999;">Geen status</p>';
+    }
+    
+    // Laad reminder instellingen
+    const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false, "hours": 24}');
+    document.getElementById('enableReminders').checked = reminderSettings.enabled;
+    document.getElementById('reminderHours').value = reminderSettings.hours;
+    document.getElementById('reminderSettings').style.display = reminderSettings.enabled ? 'block' : 'none';
+    
+    // Controleer op diensten en zet reminders
+    if (reminderSettings.enabled) {
+        scheduleReminders();
+    }
+}
+
+function saveReminderSettings() {
+    const enabled = document.getElementById('enableReminders').checked;
+    const hours = document.getElementById('reminderHours').value;
+    
+    const settings = { enabled, hours: parseInt(hours) };
+    localStorage.setItem('reminder_' + currentUser.email, JSON.stringify(settings));
+    
+    document.getElementById('reminderSettings').style.display = enabled ? 'block' : 'none';
+    
+    if (enabled) {
+        // Vraag toestemming voor browser notifications
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        scheduleReminders();
+    }
+}
+
+function scheduleReminders() {
+    const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false, "hours": 24}');
+    const myServices = allServices.filter(s => Object.values(s.roles || {}).includes(currentUser.email));
+    
+    myServices.forEach(service => {
+        const serviceTime = new Date(service.date + 'T' + service.time);
+        const reminderTime = new Date(serviceTime.getTime() - (reminderSettings.hours * 60 * 60 * 1000));
+        const now = new Date();
+        
+        // Controleer of herinnering binnenkort moet gebeuren (binnen volgende uur)
+        const timeUntilReminder = reminderTime.getTime() - now.getTime();
+        
+        if (timeUntilReminder > 0 && timeUntilReminder < 60 * 60 * 1000) {
+            // Zet timeout voor herinnering
+            setTimeout(() => {
+                sendReminder(service);
+            }, Math.max(0, timeUntilReminder));
+        }
+    });
+}
+
+function sendReminder(service) {
+    const message = `Herinnering: Je dienst "${service.desc || 'Dienst'}" is ${service.date} om ${service.time}`;
+    
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Rooster Techniek', {
+            body: message,
+            icon: 'icon.svg',
+            badge: 'icon.svg'
+        });
+    }
+    
+    // In-app popup
+    alert('🔔 ' + message);
+}
+
+function testReminder() {
+    const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false, "hours": 24}');
+    
+    if (!reminderSettings.enabled) {
+        alert('Schakel eerst herinneringen in');
+        return;
+    }
+    
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(() => {
+            if (Notification.permission === 'granted') {
+                new Notification('Rooster Techniek', {
+                    body: '✅ Herinneringen werken!',
+                    icon: 'icon.svg'
+                });
+            }
+        });
+    } else if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Rooster Techniek', {
+            body: '✅ Herinneringen werken!',
+            icon: 'icon.svg'
+        });
+    } else {
+        alert('✅ Herinneringen zijn ingeschakeld!\n(Browser notifications zijn mogelijk uitgeschakeld)');
     }
 }
 
@@ -980,7 +1300,7 @@ function editTeamMember(email) {
     const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten', '1');
     
     if (options === '1') {
-        const newStatus = prompt('Status:\n(leeg = geen)\ntraining = Training nodig\nunsuitable = Niet geschikt\nreserve = Reserve', member.status || '');
+        const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
             localStorage.setItem('bethel_team', JSON.stringify(allTeam));

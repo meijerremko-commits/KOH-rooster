@@ -626,6 +626,10 @@
             <label>Omschrijving</label>
             <input type="text" id="serviceDesc" placeholder="bijv. Ochtendwoning">
         </div>
+        <div class="form-group">
+            <label>Voorganger / spreker</label>
+            <input type="text" id="serviceVoorganger" placeholder="bijv. Ds. Jansen">
+        </div>
         <div class="modal-buttons">
             <button onclick="closeAddServiceModal()">Annuleren</button>
             <button class="primary" onclick="addService()">Toevoegen</button>
@@ -1024,6 +1028,7 @@ function renderAdminDashboard() {
             <div class="service-card">
                 <strong>${s.desc || 'Dienst'}</strong><br>
                 <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
+                ${s.voorganger ? `<br><small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small>` : ''}
             </div>
         `).join('') : 
         '<p style="color: #999;">Geen komende diensten</p>';
@@ -1144,6 +1149,7 @@ function renderServicesList() {
                 <div style="flex: 1;">
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small style="color: #666;">${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
+                    ${s.voorganger ? `<small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small><br>` : ''}
                     ${s.roles ? Object.entries(s.roles).map(([role, email]) => {
                         const person = allTeam.find(m => m.email === email);
                         return `<small><strong>${role}:</strong> ${person?.name || '–'}</small><br>`;
@@ -1168,11 +1174,19 @@ function renderTeamView() {
     document.getElementById('myServices').innerHTML = myServices.length ?
         myServices.map(s => {
             const isBlocked = allBlockouts.some(b => b.email === currentUser.email && b.date === s.date);
+            const collegas = Object.entries(s.roles || {})
+                .filter(([role, email]) => email && email !== currentUser.email)
+                .map(([role, email]) => {
+                    const person = allTeam.find(m => m.email === email);
+                    return `<small><strong>${role}:</strong> ${person?.name || '–'}</small>`;
+                }).join('<br>');
             return `
                 <div class="service-card" style="${isBlocked ? 'border-color: #dc3545; background: #fff5f5;' : ''}">
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
                     ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
+                    ${s.voorganger ? `<br><small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small>` : ''}
+                    ${collegas ? `<br>${collegas}` : ''}
                 </div>
             `;
         }).join('') :
@@ -1361,6 +1375,7 @@ function addService() {
     const date = document.getElementById('serviceDate').value;
     const time = document.getElementById('serviceTime').value;
     const desc = document.getElementById('serviceDesc').value;
+    const voorganger = document.getElementById('serviceVoorganger').value.trim();
     
     if (!date || !time) {
         alert('Datum en tijd verplicht');
@@ -1372,7 +1387,7 @@ function addService() {
         roles[role] = '';
     });
     
-    allServices.push({ date, time, desc, roles, created: new Date().toISOString() });
+    allServices.push({ date, time, desc, voorganger, roles, created: new Date().toISOString() });
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
     localStorage.setItem('bethel_services', JSON.stringify(allServices));
     
@@ -1381,6 +1396,7 @@ function addService() {
     closeAddServiceModal();
     
     document.getElementById('serviceDesc').value = '';
+    document.getElementById('serviceVoorganger').value = '';
 }
 
 function deleteService(idx) {
@@ -1409,6 +1425,10 @@ function editService(idx) {
             <label>Omschrijving</label>
             <input type="text" id="editDesc" value="${s.desc || ''}">
         </div>
+        <div class="form-group">
+            <label>Voorganger / spreker</label>
+            <input type="text" id="editVoorganger" value="${s.voorganger || ''}">
+        </div>
         ${['Video', 'Geluid', 'Multimedia', 'Licht'].map(role => {
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
             const roleMembers = teamMembers.filter(m => m.role === role || m.role === 'Techniek Lead');
@@ -1436,6 +1456,7 @@ function saveServiceEdit(idx) {
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
     allServices[idx].desc = document.getElementById('editDesc').value;
+    allServices[idx].voorganger = document.getElementById('editVoorganger').value.trim();
     
     ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;

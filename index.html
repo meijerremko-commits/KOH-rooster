@@ -715,7 +715,7 @@ function hideForgotPassword() {
 }
 
 function resetAdminPin() {
-    const email = document.getElementById('forgotEmail').value.trim();
+    const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
     const birthYear = document.getElementById('forgotBirthYear').value.trim();
     const newPin = document.getElementById('forgotNewPin').value.trim();
     
@@ -727,16 +727,23 @@ function resetAdminPin() {
     // Herlaad data
     allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
-    // Zoek admin account
-    const admin = allTeam.find(m => m.admin && m.email === email);
+    // Debug: toon admin accounts
+    const admins = allTeam.filter(m => m.admin);
+    if (admins.length === 0) {
+        alert('❌ Geen admin account gevonden!\n\nKlik "Admin Setup" om een admin account aan te maken.');
+        return;
+    }
+    
+    // Zoek admin account (case-insensitive)
+    const admin = allTeam.find(m => m.admin && m.email.toLowerCase() === email);
     if (!admin) {
-        alert('Admin email niet gevonden');
+        alert('❌ Admin email niet gevonden.\n\nGevonden admin email: ' + admins[0].email);
         return;
     }
     
     // Check geboortejaar
     if (admin.birthYear !== birthYear) {
-        alert('Geboortejaar is onjuist');
+        alert('❌ Geboortejaar is onjuist');
         return;
     }
     

@@ -294,6 +294,10 @@
         
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
         
+        <div style="text-align: center; margin-top: 10px;">
+            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
+        </div>
+        
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
             <p class="small-text" style="margin-bottom: 10px;">Nog geen account?</p>
             <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
@@ -318,8 +322,38 @@
             <label>Admin PIN</label>
             <input type="password" id="adminPin" placeholder="kies een PIN">
         </div>
+        <div class="form-group">
+            <label>Geboortejaar (voor wachtwoord reset)</label>
+            <input type="number" id="adminBirthYear" placeholder="1990" min="1900" max="2020">
+        </div>
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="createAdminAccount()">Account aanmaken</button>
         <button style="width: 100%; padding: 12px;" onclick="hideAdminSetup()">Terug</button>
+    </div>
+</div>
+
+<div id="forgotPasswordScreen" class="login-screen" style="display: none;">
+    <div class="login-box">
+        <h1>Wachtwoord Resetten</h1>
+        <p class="subtitle">Alleen voor admin</p>
+        
+        <div class="info-box">
+            Beantwoord de veiligheidsvraag om je PIN te resetten
+        </div>
+        
+        <div class="form-group">
+            <label>Admin email</label>
+            <input type="email" id="forgotEmail" placeholder="beheerder@mail.nl">
+        </div>
+        <div class="form-group">
+            <label>Geboortejaar admin</label>
+            <input type="number" id="forgotBirthYear" placeholder="1990" min="1900" max="2020">
+        </div>
+        <div class="form-group">
+            <label>Nieuwe PIN</label>
+            <input type="password" id="forgotNewPin" placeholder="Kies een PIN">
+        </div>
+        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="resetAdminPin()">PIN Resetten</button>
+        <button style="width: 100%; padding: 12px;" onclick="hideForgotPassword()">Terug</button>
     </div>
 </div>
 
@@ -670,6 +704,60 @@ function submitRegistration() {
 console.log('Geladen team:', allTeam);
 console.log('Admin exists:', allTeam.some(m => m.admin === true));
 
+function showForgotPassword() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('forgotPasswordScreen').style.display = 'flex';
+}
+
+function hideForgotPassword() {
+    document.getElementById('forgotPasswordScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function resetAdminPin() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const birthYear = document.getElementById('forgotBirthYear').value.trim();
+    const newPin = document.getElementById('forgotNewPin').value.trim();
+    
+    if (!email || !birthYear || !newPin) {
+        alert('Alle velden zijn verplicht');
+        return;
+    }
+    
+    // Herlaad data
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    
+    // Zoek admin account
+    const admin = allTeam.find(m => m.admin && m.email === email);
+    if (!admin) {
+        alert('Admin email niet gevonden');
+        return;
+    }
+    
+    // Check geboortejaar
+    if (admin.birthYear !== birthYear) {
+        alert('Geboortejaar is onjuist');
+        return;
+    }
+    
+    if (!newPin || newPin.length < 2) {
+        alert('PIN moet minstens 2 tekens zijn');
+        return;
+    }
+    
+    // Reset PIN
+    admin.pin = newPin;
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    
+    alert('✅ PIN gewijzigd naar: ' + newPin + '\n\nJe kunt nu inloggen.');
+    hideForgotPassword();
+    
+    // Clear form
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotBirthYear').value = '';
+    document.getElementById('forgotNewPin').value = '';
+}
+
 function showAdminSetup() {
     // Check of er al een admin bestaat
     const adminExists = allTeam.some(m => m.admin === true);
@@ -689,9 +777,10 @@ function hideAdminSetup() {
 function createAdminAccount() {
     const email = document.getElementById('adminEmail').value.trim();
     const pin = document.getElementById('adminPin').value.trim();
+    const birthYear = document.getElementById('adminBirthYear').value.trim();
     
-    if (!email || !pin) {
-        alert('Email en PIN verplicht');
+    if (!email || !pin || !birthYear) {
+        alert('Email, PIN en geboortejaar zijn verplicht');
         return;
     }
     
@@ -712,6 +801,7 @@ function createAdminAccount() {
         name: 'Admin',
         email: email,
         pin: pin,
+        birthYear: birthYear,
         role: 'Admin',
         status: '',
         admin: true,
@@ -740,6 +830,7 @@ function createAdminAccount() {
     hideAdminSetup();
     document.getElementById('adminEmail').value = '';
     document.getElementById('adminPin').value = '';
+    document.getElementById('adminBirthYear').value = '';
 }
 
 function handleLogin() {

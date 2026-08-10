@@ -840,10 +840,6 @@ function submitRegistration() {
     document.getElementById('regPin').value = '';
 }
 
-// Log voor debugging
-console.log('Geladen team:', allTeam);
-console.log('Admin exists:', allTeam.some(m => m.admin === true));
-
 function showForgotPassword() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('forgotPasswordScreen').style.display = 'flex';

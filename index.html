@@ -295,12 +295,19 @@
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
         
         <div style="text-align: center; margin-top: 10px;">
-            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
+            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPasswordMember()">Wachtwoord vergeten? (team-lid)</button>
+        </div>
+        <div style="text-align: center; margin-top: 6px;">
+            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten? (admin)</button>
         </div>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
             <p class="small-text" style="margin-bottom: 10px;">Nog geen account?</p>
             <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
+        </div>
+
+        <div id="adminSetupLink" style="margin-top: 15px; text-align: center; display: none;">
+            <button style="width: 100%; padding: 8px; font-size: 12px; background: transparent; color: #5B8FC7; box-shadow: none;" onclick="showAdminSetup()">Eerste keer hier? Admin account aanmaken</button>
         </div>
     </div>
 </div>
@@ -334,7 +341,7 @@
 <div id="forgotPasswordScreen" class="login-screen" style="display: none;">
     <div class="login-box">
         <h1>Wachtwoord Resetten</h1>
-        <p class="subtitle">Alleen voor admin</p>
+        <p class="subtitle">Alleen voor de admin</p>
         
         <div class="info-box">
             Beantwoord de veiligheidsvraag om je PIN te resetten
@@ -354,6 +361,32 @@
         </div>
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="resetAdminPin()">PIN Resetten</button>
         <button style="width: 100%; padding: 12px;" onclick="hideForgotPassword()">Terug</button>
+    </div>
+</div>
+
+<div id="forgotPasswordMemberScreen" class="login-screen" style="display: none;">
+    <div class="login-box">
+        <h1>Wachtwoord Resetten</h1>
+        <p class="subtitle">Voor team-leden</p>
+        
+        <div class="info-box">
+            Beantwoord de veiligheidsvraag om je eigen PIN te resetten. Je hoeft hiervoor niet naar de admin.
+        </div>
+        
+        <div class="form-group">
+            <label>Jouw email</label>
+            <input type="email" id="memberForgotEmail" placeholder="je@mail.nl">
+        </div>
+        <div class="form-group">
+            <label>Jouw geboortedatum</label>
+            <input type="date" id="memberForgotBirthDate">
+        </div>
+        <div class="form-group">
+            <label>Nieuwe PIN</label>
+            <input type="password" id="memberForgotNewPin" placeholder="Kies een PIN">
+        </div>
+        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="resetMemberPin()">PIN Resetten</button>
+        <button style="width: 100%; padding: 12px;" onclick="hideForgotPasswordMember()">Terug</button>
     </div>
 </div>
 
@@ -553,6 +586,10 @@
             <input type="password" id="teamPin" placeholder="kies een PIN">
         </div>
         <div class="form-group">
+            <label>Geboortedatum (optioneel, nodig voor eigen wachtwoord-reset)</label>
+            <input type="date" id="teamBirthDate">
+        </div>
+        <div class="form-group">
             <label>Status</label>
             <select id="teamStatus">
                 <option value="">Geen</option>
@@ -713,6 +750,73 @@ function hideForgotPassword() {
     document.getElementById('forgotPasswordScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
 }
+
+function showForgotPasswordMember() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('forgotPasswordMemberScreen').style.display = 'flex';
+}
+
+function hideForgotPasswordMember() {
+    document.getElementById('forgotPasswordMemberScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function resetMemberPin() {
+    const email = document.getElementById('memberForgotEmail').value.trim().toLowerCase();
+    const birthDate = document.getElementById('memberForgotBirthDate').value;
+    const newPin = document.getElementById('memberForgotNewPin').value.trim();
+    
+    if (!email || !birthDate || !newPin) {
+        alert('Alle velden zijn verplicht');
+        return;
+    }
+    
+    // Herlaad data
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    
+    // Zoek team-lid (geen admin), case-insensitive op email
+    const member = allTeam.find(m => !m.admin && m.email.toLowerCase() === email);
+    if (!member) {
+        alert('❌ Geen team-lid gevonden met dit email adres.');
+        return;
+    }
+    
+    if (!member.birthDate) {
+        alert('❌ Voor jouw account is geen geboortedatum bekend.\n\nNeem contact op met de admin om je PIN te laten resetten.');
+        return;
+    }
+    
+    if (member.birthDate !== birthDate) {
+        alert('❌ Geboortedatum is onjuist');
+        return;
+    }
+    
+    if (newPin.length !== 4 || isNaN(newPin)) {
+        alert('PIN moet 4 cijfers zijn');
+        return;
+    }
+    
+    // Reset PIN
+    member.pin = newPin;
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    
+    alert('✅ PIN gewijzigd. Je kunt nu inloggen.');
+    hideForgotPasswordMember();
+    
+    // Clear form
+    document.getElementById('memberForgotEmail').value = '';
+    document.getElementById('memberForgotBirthDate').value = '';
+    document.getElementById('memberForgotNewPin').value = '';
+}
+
+function updateAdminSetupLinkVisibility() {
+    const adminExists = allTeam.some(m => m.admin === true);
+    const link = document.getElementById('adminSetupLink');
+    if (link) {
+        link.style.display = adminExists ? 'none' : 'block';
+    }
+}
+updateAdminSetupLinkVisibility();
 
 function resetAdminPin() {
     const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
@@ -1206,6 +1310,7 @@ function addTeamMember() {
     const email = document.getElementById('teamEmail').value.trim();
     const role = document.getElementById('teamRole').value;
     const pin = document.getElementById('teamPin').value.trim();
+    const birthDate = document.getElementById('teamBirthDate').value;
     const status = document.getElementById('teamStatus').value;
     
     if (!name || !email || !pin) {
@@ -1218,7 +1323,7 @@ function addTeamMember() {
         return;
     }
     
-    allTeam.push({ name, email, role, pin, status, admin: false, created: new Date().toISOString() });
+    allTeam.push({ name, email, role, pin, birthDate, status, admin: false, created: new Date().toISOString() });
     localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
     renderTeamList();
@@ -1228,6 +1333,7 @@ function addTeamMember() {
     document.getElementById('teamName').value = '';
     document.getElementById('teamEmail').value = '';
     document.getElementById('teamPin').value = '';
+    document.getElementById('teamBirthDate').value = '';
     document.getElementById('teamStatus').value = '';
 }
 
@@ -1395,7 +1501,7 @@ function editTeamMember(email) {
     const member = allTeam.find(m => m.email === email);
     
     // Menu met opties
-    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten', '1');
+    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)', '1');
     
     if (options === '1') {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
@@ -1411,6 +1517,18 @@ function editTeamMember(email) {
             member.pin = newPin.trim();
             localStorage.setItem('bethel_team', JSON.stringify(allTeam));
             alert('✅ PIN gewijzigd naar: ' + newPin);
+            renderTeamList();
+        }
+    } else if (options === '3') {
+        const newBirthDate = prompt('Geboortedatum voor ' + member.name + ' (formaat: JJJJ-MM-DD):', member.birthDate || '');
+        if (newBirthDate !== null) {
+            if (newBirthDate.trim() !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(newBirthDate.trim())) {
+                alert('Ongeldig formaat. Gebruik JJJJ-MM-DD, bijv. 1990-05-15');
+                return;
+            }
+            member.birthDate = newBirthDate.trim();
+            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            alert('✅ Geboortedatum ingesteld. ' + member.name + ' kan nu zelf de PIN resetten.');
             renderTeamList();
         }
     }

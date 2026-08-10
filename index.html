@@ -771,11 +771,18 @@ function saveBlockouts() {
     });
 }
 
-// Register service worker voor PWA
+// Service worker uitgeschakeld: verstoorde netwerkverzoeken naar Firebase.
+// Bestaande registraties (van eerdere versies van de app) worden actief opgeruimd,
+// en de caches die de service worker aanlegde worden gewist.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {
-    // Service worker is optional
-  });
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  }).catch(() => {});
+}
+if ('caches' in window) {
+  caches.keys().then(names => {
+    names.forEach(name => caches.delete(name));
+  }).catch(() => {});
 }
 
 function showRegistration() {

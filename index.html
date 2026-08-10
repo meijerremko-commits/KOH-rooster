@@ -269,7 +269,15 @@
 </head>
 <body>
 
-<div id="loginScreen" class="login-screen">
+<div id="firebaseLoadingScreen" class="login-screen" style="display: flex;">
+    <div class="login-box" style="text-align: center;">
+        <h1>Rooster Techniek</h1>
+        <p class="subtitle">Kijk Omhoog</p>
+        <p style="margin-top: 20px;">🔄 Verbinden met de cloud...</p>
+    </div>
+</div>
+
+<div id="loginScreen" class="login-screen" style="display: none;">
     <div class="login-box">
         <h1>Rooster Techniek</h1>
         <p class="subtitle">Kijk Omhoog</p>
@@ -444,7 +452,7 @@
             <button class="tab-btn" onclick="switchAdminTab('requests')">Registraties</button>
             <button class="tab-btn" onclick="switchAdminTab('team')">Team</button>
             <button class="tab-btn" onclick="switchAdminTab('services')">Diensten</button>
-            <button class="tab-btn" onclick="switchAdminTab('admin')">Admin</button>
+            <button class="tab-btn" id="adminOnlyTabBtn" onclick="switchAdminTab('admin')">Admin</button>
         </div>
 
         <!-- OVERVIEW -->
@@ -665,12 +673,103 @@
     </div>
 </div>
 
+<!-- Firebase (gedeelde cloud-opslag) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<script>
+// Firebase configuratie (KOH Techniek rooster project)
+const firebaseConfig = {
+    apiKey: "AIzaSyAdu7M16hW34EDuk7-AcwERCXtOxklo0mI",
+    authDomain: "koh-techniek-rooster.firebaseapp.com",
+    projectId: "koh-techniek-rooster",
+    storageBucket: "koh-techniek-rooster.firebasestorage.app",
+    messagingSenderId: "377647153504",
+    appId: "1:377647153504:web:214ea5b40cd6261d71de05"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const teamDocRef = db.collection('koh_rooster').doc('team');
+const servicesDocRef = db.collection('koh_rooster').doc('services');
+const blockoutsDocRef = db.collection('koh_rooster').doc('blockouts');
+</script>
+
 <script>
 // Initialiseer data
 let currentUser = null;
-let allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
-let allServices = JSON.parse(localStorage.getItem('bethel_services') || '[]');
-let allBlockouts = JSON.parse(localStorage.getItem('bethel_blockouts') || '[]');
+let allTeam = [];
+let allServices = [];
+let allBlockouts = [];
+let firebaseReady = false;
+
+function handleCloudDataChange() {
+    // Herschilder wat er nu op het scherm staat zodra data verandert (ook vanaf andere apparaten)
+    if (!currentUser) return;
+    if (currentUser.admin || currentUser.permission === 'editor') {
+        renderAdminDashboard();
+        const teamTab = document.getElementById('teamTab');
+        const servicesTab = document.getElementById('servicesTab');
+        const requestsTab = document.getElementById('requestsTab');
+        if (teamTab && teamTab.classList.contains('active')) renderTeamList();
+        if (servicesTab && servicesTab.classList.contains('active')) renderServicesList();
+        if (requestsTab && requestsTab.classList.contains('active')) renderRegistrationRequests();
+    } else {
+        renderTeamView();
+    }
+}
+
+let loadedParts = { team: false, services: false, blockouts: false };
+function checkInitialLoadDone() {
+    if (loadedParts.team && loadedParts.services && loadedParts.blockouts && !firebaseReady) {
+        firebaseReady = true;
+        document.getElementById('firebaseLoadingScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+        updateAdminSetupLinkVisibility();
+    }
+}
+
+teamDocRef.onSnapshot(doc => {
+    allTeam = doc.exists ? (doc.data().items || []) : [];
+    loadedParts.team = true;
+    checkInitialLoadDone();
+    if (firebaseReady) handleCloudDataChange();
+}, err => {
+    console.error('Firestore fout (team):', err);
+    alert('⚠️ Kon geen verbinding maken met de cloud-database. Controleer je internetverbinding en probeer het opnieuw.');
+});
+
+servicesDocRef.onSnapshot(doc => {
+    allServices = doc.exists ? (doc.data().items || []) : [];
+    loadedParts.services = true;
+    checkInitialLoadDone();
+    if (firebaseReady) handleCloudDataChange();
+}, err => console.error('Firestore fout (services):', err));
+
+blockoutsDocRef.onSnapshot(doc => {
+    allBlockouts = doc.exists ? (doc.data().items || []) : [];
+    loadedParts.blockouts = true;
+    checkInitialLoadDone();
+    if (firebaseReady) handleCloudDataChange();
+}, err => console.error('Firestore fout (blockouts):', err));
+
+function saveTeam() {
+    teamDocRef.set({ items: allTeam }).catch(err => {
+        console.error('Fout bij opslaan team:', err);
+        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
+    });
+}
+function saveServices() {
+    servicesDocRef.set({ items: allServices }).catch(err => {
+        console.error('Fout bij opslaan diensten:', err);
+        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
+    });
+}
+function saveBlockouts() {
+    blockoutsDocRef.set({ items: allBlockouts }).catch(err => {
+        console.error('Fout bij opslaan blokkades:', err);
+        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
+    });
+}
 
 // Register service worker voor PWA
 if ('serviceWorker' in navigator) {
@@ -727,7 +826,7 @@ function submitRegistration() {
     };
     
     allTeam.push(registrationRequest);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     
     alert('✅ Registratie aangevraagd!\n\nJe account wacht op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
     hideRegistration();
@@ -776,7 +875,6 @@ function resetMemberPin() {
     }
     
     // Herlaad data
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
     // Zoek team-lid (geen admin), case-insensitive op email
     const member = allTeam.find(m => !m.admin && m.email.toLowerCase() === email);
@@ -802,7 +900,7 @@ function resetMemberPin() {
     
     // Reset PIN
     member.pin = newPin;
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     
     alert('✅ PIN gewijzigd. Je kunt nu inloggen.');
     hideForgotPasswordMember();
@@ -820,7 +918,6 @@ function updateAdminSetupLinkVisibility() {
         link.style.display = adminExists ? 'none' : 'block';
     }
 }
-updateAdminSetupLinkVisibility();
 
 function resetAdminPin() {
     const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
@@ -833,7 +930,6 @@ function resetAdminPin() {
     }
     
     // Herlaad data
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
     // Debug: toon admin accounts
     const admins = allTeam.filter(m => m.admin);
@@ -862,7 +958,7 @@ function resetAdminPin() {
     
     // Reset PIN
     admin.pin = newPin;
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     
     alert('✅ PIN gewijzigd naar: ' + newPin + '\n\nJe kunt nu inloggen.');
     hideForgotPassword();
@@ -936,10 +1032,7 @@ function createAdminAccount() {
     
     allTeam.push(adminAccount);
     allTeam.push(remkoAccount);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-    
-    // Reload de data om zeker te zijn
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    saveTeam();
     
     alert('✅ Admin account aangemaakt!\n\nAdmin:\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
     hideAdminSetup();
@@ -957,8 +1050,6 @@ function handleLogin() {
         return;
     }
     
-    // Reload data om zeker te zijn dat alles up-to-date is
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
     const user = allTeam.find(m => m.email === email && m.pin === pin);
     if (!user) {
@@ -977,9 +1068,19 @@ function handleLogin() {
     document.getElementById('adminSetup').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     
-    if (user.admin) {
+    const hasManagementAccess = user.admin || user.permission === 'editor';
+    
+    if (hasManagementAccess) {
         document.getElementById('adminDashboard').style.display = 'block';
         document.getElementById('teamView').style.display = 'none';
+        
+        // Alleen echte admins zien de Admin-tab (data beheer / gevarenzone)
+        const adminOnlyBtn = document.getElementById('adminOnlyTabBtn');
+        if (adminOnlyBtn) {
+            adminOnlyBtn.style.display = user.admin ? 'inline-block' : 'none';
+        }
+        
+        switchAdminTab('overview');
         renderAdminDashboard();
     } else {
         document.getElementById('adminDashboard').style.display = 'none';
@@ -1005,12 +1106,26 @@ function handleLogout() {
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function switchAdminTab(tab) {
+function switchAdminTab(tab, btnEl) {
+    // Extra beveiliging: alleen echte admin mag op het Admin-tabblad
+    if (tab === 'admin' && !currentUser.admin) {
+        alert('❌ Alleen de hoofdbeheerder heeft toegang tot dit onderdeel.');
+        return;
+    }
+    
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     
     document.getElementById(tab + 'Tab').classList.add('active');
-    event.target.classList.add('active');
+    
+    const clickedBtn = btnEl || (typeof event !== 'undefined' ? event.target : null);
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    } else {
+        // Programmatische aanroep zonder knop (bv. na inloggen): highlight de bijpassende knop
+        const fallbackBtn = document.querySelector(`.tab-btn[onclick*="'${tab}'"]`);
+        if (fallbackBtn) fallbackBtn.classList.add('active');
+    }
     
     if (tab === 'requests') renderRegistrationRequests();
     if (tab === 'team') renderTeamList();
@@ -1086,7 +1201,7 @@ function approveRegistration(email) {
     member.role = 'Video';
     member.approved = true;
     
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
     
     renderRegistrationRequests();
@@ -1098,7 +1213,7 @@ function rejectRegistration(email) {
     if (!confirm('Registratie afwijzen?')) return;
     
     allTeam = allTeam.filter(m => m.email !== email);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     
     alert('Registratie afgewezen');
     renderRegistrationRequests();
@@ -1130,6 +1245,7 @@ function renderTeamList() {
                      member.status === 'specialized' ? '🔧 Gespecialiseerd' :
                      member.status === 'reserve' ? '🔄 Reserve' :
                      member.status === 'unsuitable' ? '❌ Niet Geschikt' : member.status) + '</span>' : ''}
+                ${member.permission === 'editor' ? '<br><span class="badge" style="background:#5B8FC7; color:#fff;">🔑 Editor</span>' : ''}
             </div>
             <div style="display: flex; gap: 5px; width: 100%;">
                 <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Bewerk</button>
@@ -1338,7 +1454,7 @@ function addTeamMember() {
     }
     
     allTeam.push({ name, email, role, pin, birthDate, status, admin: false, created: new Date().toISOString() });
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    saveTeam();
     
     renderTeamList();
     renderAdminDashboard();
@@ -1355,8 +1471,8 @@ function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
         allBlockouts = allBlockouts.filter(b => b.email !== email);
-        localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-        localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+        saveTeam();
+        saveBlockouts();
         renderTeamList();
         renderAdminDashboard();
     }
@@ -1389,7 +1505,7 @@ function addService() {
     
     allServices.push({ date, time, desc, voorganger, roles, created: new Date().toISOString() });
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
-    localStorage.setItem('bethel_services', JSON.stringify(allServices));
+    saveServices();
     
     renderServicesList();
     renderAdminDashboard();
@@ -1402,7 +1518,7 @@ function addService() {
 function deleteService(idx) {
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
-        localStorage.setItem('bethel_services', JSON.stringify(allServices));
+        saveServices();
         renderServicesList();
         renderAdminDashboard();
     }
@@ -1462,7 +1578,7 @@ function saveServiceEdit(idx) {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
-    localStorage.setItem('bethel_services', JSON.stringify(allServices));
+    saveServices();
     renderServicesList();
     renderAdminDashboard();
     closeEditServiceModal();
@@ -1491,7 +1607,7 @@ function addBlockout() {
     }
     
     allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    saveBlockouts();
     
     renderTeamView();
     closeBlockoutModal();
@@ -1500,7 +1616,7 @@ function addBlockout() {
 
 function deleteBlockout(idx) {
     allBlockouts.splice(idx, 1);
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    saveBlockouts();
     renderTeamView();
 }
 
@@ -1511,8 +1627,8 @@ function deleteMyAccount() {
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
     allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
     
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    saveTeam();
+    saveBlockouts();
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();
@@ -1521,14 +1637,17 @@ function deleteMyAccount() {
 function editTeamMember(email) {
     const member = allTeam.find(m => m.email === email);
     
-    // Menu met opties
-    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)', '1');
+    // Alleen de hoofdbeheerder (echte admin) mag rechten toekennen
+    const menuText = currentUser.admin
+        ? 'Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)\n4 = Rechten wijzigen (Geen / Editor / Admin)'
+        : 'Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)';
+    const options = prompt(menuText, '1');
     
     if (options === '1') {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
-            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            saveTeam();
             renderTeamList();
             renderAdminDashboard();
         }
@@ -1536,7 +1655,7 @@ function editTeamMember(email) {
         const newPin = prompt('Nieuwe PIN voor ' + member.name + ':', '');
         if (newPin !== null && newPin.trim() !== '') {
             member.pin = newPin.trim();
-            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            saveTeam();
             alert('✅ PIN gewijzigd naar: ' + newPin);
             renderTeamList();
         }
@@ -1548,10 +1667,50 @@ function editTeamMember(email) {
                 return;
             }
             member.birthDate = newBirthDate.trim();
-            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            saveTeam();
             alert('✅ Geboortedatum ingesteld. ' + member.name + ' kan nu zelf de PIN resetten.');
             renderTeamList();
         }
+    } else if (options === '4') {
+        if (!currentUser.admin) {
+            alert('❌ Alleen de hoofdbeheerder kan rechten wijzigen.');
+            return;
+        }
+        if (member.email === currentUser.email) {
+            alert('❌ Je kunt je eigen rechten niet wijzigen.');
+            return;
+        }
+        const newPermission = prompt(
+            'Rechten voor ' + member.name + ':\n\n' +
+            'geen = Gewoon team-lid (ziet alleen eigen rooster)\n' +
+            'editor = Editor (mag diensten en team invullen, geen toegang tot data-beheer)\n' +
+            'admin = Volledig beheerder (zelfde rechten als jij)\n\n' +
+            'Typ: geen / editor / admin',
+            member.admin ? 'admin' : (member.permission === 'editor' ? 'editor' : 'geen')
+        );
+        if (newPermission === null) return;
+        
+        const choice = newPermission.trim().toLowerCase();
+        if (choice === 'geen') {
+            member.admin = false;
+            member.permission = '';
+            alert('✅ ' + member.name + ' is nu een gewoon team-lid.');
+        } else if (choice === 'editor') {
+            member.admin = false;
+            member.permission = 'editor';
+            alert('✅ ' + member.name + ' is nu Editor: mag diensten en team invullen.');
+        } else if (choice === 'admin') {
+            member.admin = true;
+            member.permission = '';
+            alert('✅ ' + member.name + ' is nu volledig beheerder.');
+        } else {
+            alert('Ongeldige keuze. Kies geen, editor of admin.');
+            return;
+        }
+        saveTeam();
+        renderTeamList();
+        renderAdminDashboard();
+        updateAdminSetupLinkVisibility();
     }
 }
 
@@ -1572,13 +1731,22 @@ function exportAllData() {
 }
 
 function resetAllData() {
-    if (!confirm('WAARSCHUWING: Dit verwijdert ALLES. Weet je het zeker?')) return;
+    if (!confirm('WAARSCHUWING: Dit verwijdert ALLES, voor iedereen, op alle apparaten. Weet je het zeker?')) return;
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Typ "VERWIJDER" om te bevestigen.')) return;
     
     if (prompt('Type "VERWIJDEREN" om te bevestigen:') === 'VERWIJDEREN') {
-        localStorage.clear();
-        alert('Alle data is verwijderd.');
-        location.reload();
+        Promise.all([
+            teamDocRef.set({ items: [] }),
+            servicesDocRef.set({ items: [] }),
+            blockoutsDocRef.set({ items: [] })
+        ]).then(() => {
+            localStorage.clear();
+            alert('Alle data is verwijderd.');
+            location.reload();
+        }).catch(err => {
+            console.error(err);
+            alert('⚠️ Er ging iets mis bij het verwijderen. Controleer je internetverbinding.');
+        });
     }
 }
 </script>

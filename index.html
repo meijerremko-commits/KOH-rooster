@@ -636,11 +636,20 @@
 </div>
 
 <script>
-// Initialiseer data
-let currentUser = null;
-let allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
-let allServices = JSON.parse(localStorage.getItem('bethel_services') || '[]');
-let allBlockouts = JSON.parse(localStorage.getItem('bethel_blockouts') || '[]');
+// Initialiseer data - migrate van old bethel keys naar new rooster_techniek keys
+let allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('rooster_techniek_team') || '[]');
+let allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('rooster_techniek_services') || '[]');
+let allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('rooster_techniek_blockouts') || '[]');
+
+// Sla direct op in juiste keys
+function initializeStorage() {
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+}
+
+// Doe dit direct bij laden
+initializeStorage();
 
 // Register service worker voor PWA
 if ('serviceWorker' in navigator) {
@@ -697,7 +706,7 @@ function submitRegistration() {
     };
     
     allTeam.push(registrationRequest);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     // Zet melding flag voor admin
     localStorage.setItem('newRegistration_' + email, 'true');
@@ -718,8 +727,25 @@ function submitRegistration() {
 console.log('Geladen team:', allTeam);
 console.log('Admin exists:', allTeam.some(m => m.admin === true));
 
-// Check voor nieuwe registraties op page load
-function checkNewRegistrations() {
+// Herlaad data en sla op in nieuwe format
+function saveData() {
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    
+    // Keep old keys too for extra safety
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+}
+
+// Check voor web storage event listener
+window.addEventListener('storage', () => {
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
+    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || '[]');
+    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || '[]');
+    checkNewRegistrations();
+});
     const pending = allTeam.filter(m => m.role === 'Pending').length;
     const badge = document.getElementById('newRequestsBadge');
     const badgeCount = document.getElementById('badgeCount');
@@ -738,7 +764,7 @@ checkNewRegistrations();
 
 // Luister naar changes in localStorage (van andere tabs)
 window.addEventListener('storage', () => {
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
     checkNewRegistrations();
 });
 
@@ -763,7 +789,7 @@ function resetAdminPin() {
     }
     
     // Herlaad data
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
     
     // Debug: toon admin accounts
     const admins = allTeam.filter(m => m.admin);
@@ -792,7 +818,7 @@ function resetAdminPin() {
     
     // Reset PIN
     admin.pin = newPin;
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     alert('✅ PIN gewijzigd naar: ' + newPin + '\n\nJe kunt nu inloggen.');
     hideForgotPassword();
@@ -867,10 +893,10 @@ function createAdminAccount() {
     
     allTeam.push(adminAccount);
     allTeam.push(remkoAccount);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     // Reload de data om zeker te zijn
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
     
     alert('✅ Admin account aangemaakt!\n\nAdmin:\nNaam: ' + name + '\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
     hideAdminSetup();
@@ -890,7 +916,7 @@ function handleLogin() {
     }
     
     // Reload data om zeker te zijn dat alles up-to-date is
-    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
     
     const user = allTeam.find(m => m.email.toLowerCase() === email && m.pin === pin);
     if (!user) {
@@ -1047,7 +1073,7 @@ function approveRegistration(email) {
     member.role = 'Video';
     member.approved = true;
     
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
     
     renderRegistrationRequests();
@@ -1059,7 +1085,7 @@ function rejectRegistration(email) {
     if (!confirm('Registratie afwijzen?')) return;
     
     allTeam = allTeam.filter(m => m.email !== email);
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     alert('Registratie afgewezen');
     renderRegistrationRequests();
@@ -1289,7 +1315,7 @@ function addTeamMember() {
     }
     
     allTeam.push({ name, email: email, role, pin, status, admin: false, created: new Date().toISOString() });
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     renderTeamList();
     renderAdminDashboard();
@@ -1305,8 +1331,8 @@ function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
         allBlockouts = allBlockouts.filter(b => b.email !== email);
-        localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-        localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+        localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+        localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
         renderTeamList();
         renderAdminDashboard();
     }
@@ -1338,7 +1364,7 @@ function addService() {
     
     allServices.push({ date, time, desc, roles, created: new Date().toISOString() });
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
-    localStorage.setItem('bethel_services', JSON.stringify(allServices));
+    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
     
     renderServicesList();
     renderAdminDashboard();
@@ -1350,7 +1376,7 @@ function addService() {
 function deleteService(idx) {
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
-        localStorage.setItem('bethel_services', JSON.stringify(allServices));
+        localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
         renderServicesList();
         renderAdminDashboard();
     }
@@ -1405,7 +1431,7 @@ function saveServiceEdit(idx) {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
-    localStorage.setItem('bethel_services', JSON.stringify(allServices));
+    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
     renderServicesList();
     renderAdminDashboard();
     closeEditServiceModal();
@@ -1434,7 +1460,7 @@ function addBlockout() {
     }
     
     allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
     
     renderTeamView();
     closeBlockoutModal();
@@ -1443,7 +1469,7 @@ function addBlockout() {
 
 function deleteBlockout(idx) {
     allBlockouts.splice(idx, 1);
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
     renderTeamView();
 }
 
@@ -1454,8 +1480,8 @@ function deleteMyAccount() {
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
     allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
     
-    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
-    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
+    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();
@@ -1471,7 +1497,7 @@ function editTeamMember(email) {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
-            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
             renderTeamList();
             renderAdminDashboard();
         }
@@ -1479,7 +1505,7 @@ function editTeamMember(email) {
         const newPin = prompt('Nieuwe PIN voor ' + member.name + ':', '');
         if (newPin !== null && newPin.trim() !== '') {
             member.pin = newPin.trim();
-            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+            localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
             alert('✅ PIN gewijzigd naar: ' + newPin);
             renderTeamList();
         }

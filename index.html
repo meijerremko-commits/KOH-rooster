@@ -303,7 +303,10 @@
         </div>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-            <p class="small-text" style="margin-bottom: 10px;">Nog geen account?</p>
+            <p class="small-text" style="margin-bottom: 10px;">Eerste keer?</p>
+            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="showAdminSetup()">Admin Setup</button>
+            
+            <p class="small-text" style="margin-bottom: 10px; margin-top: 15px;">Ben je team-lid?</p>
             <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
         </div>
     </div>
@@ -659,7 +662,7 @@ function hideRegistration() {
 function submitRegistration() {
     const firstName = document.getElementById('regFirstName').value.trim();
     const lastName = document.getElementById('regLastName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
+    const email = document.getElementById('regEmail').value.trim().toLowerCase();
     const phone = document.getElementById('regPhone').value.trim();
     const birthDate = document.getElementById('regBirthDate').value;
     const pin = document.getElementById('regPin').value.trim();
@@ -674,7 +677,7 @@ function submitRegistration() {
         return;
     }
     
-    if (allTeam.some(m => m.email === email)) {
+    if (allTeam.some(m => m.email.toLowerCase() === email.toLowerCase())) {
         alert('Dit email adres is al in gebruik');
         return;
     }
@@ -817,7 +820,7 @@ function hideAdminSetup() {
 }
 
 function createAdminAccount() {
-    const email = document.getElementById('adminEmail').value.trim();
+    const email = document.getElementById('adminEmail').value.trim().toLowerCase();
     const pin = document.getElementById('adminPin').value.trim();
     const birthYear = document.getElementById('adminBirthYear').value.trim();
     const name = document.getElementById('adminName').value.trim() || 'Admin';
@@ -834,7 +837,7 @@ function createAdminAccount() {
         return;
     }
     
-    if (allTeam.some(m => m.email === email)) {
+    if (allTeam.some(m => m.email.toLowerCase() === email.toLowerCase())) {
         alert('Dit email adres is al in gebruik');
         return;
     }
@@ -878,7 +881,7 @@ function createAdminAccount() {
 }
 
 function handleLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     const pin = document.getElementById('loginPin').value.trim();
     
     if (!email || !pin) {
@@ -889,7 +892,7 @@ function handleLogin() {
     // Reload data om zeker te zijn dat alles up-to-date is
     allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
-    const user = allTeam.find(m => m.email === email && m.pin === pin);
+    const user = allTeam.find(m => m.email.toLowerCase() === email && m.pin === pin);
     if (!user) {
         alert('Email of PIN incorrect. Controleer je gegevens.');
         return;
@@ -1037,7 +1040,7 @@ function renderRegistrationRequests() {
 }
 
 function approveRegistration(email) {
-    const member = allTeam.find(m => m.email === email);
+    const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     if (!member) return;
     
     // Zet rol standaard op Video als niet ingesteld
@@ -1108,7 +1111,7 @@ function renderServicesList() {
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small style="color: #666;">${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
                     ${s.roles ? Object.entries(s.roles).map(([role, email]) => {
-                        const person = allTeam.find(m => m.email === email);
+                        const person = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
                         return `<small><strong>${role}:</strong> ${person?.name || '–'}</small><br>`;
                     }).join('') : ''}
                 </div>
@@ -1270,7 +1273,7 @@ function closeAddTeamModal() {
 
 function addTeamMember() {
     const name = document.getElementById('teamName').value.trim();
-    const email = document.getElementById('teamEmail').value.trim();
+    const email = document.getElementById('teamEmail').value.trim().toLowerCase();
     const role = document.getElementById('teamRole').value;
     const pin = document.getElementById('teamPin').value.trim();
     const status = document.getElementById('teamStatus').value;
@@ -1280,12 +1283,12 @@ function addTeamMember() {
         return;
     }
     
-    if (allTeam.some(m => m.email === email)) {
+    if (allTeam.some(m => m.email.toLowerCase() === email)) {
         alert('Dit account bestaat al');
         return;
     }
     
-    allTeam.push({ name, email, role, pin, status, admin: false, created: new Date().toISOString() });
+    allTeam.push({ name, email: email, role, pin, status, admin: false, created: new Date().toISOString() });
     localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
     renderTeamList();
@@ -1459,7 +1462,7 @@ function deleteMyAccount() {
 }
 
 function editTeamMember(email) {
-    const member = allTeam.find(m => m.email === email);
+    const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     
     // Menu met opties
     const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten', '1');

@@ -637,9 +637,9 @@
 
 <script>
 // Initialiseer data - migrate van old bethel keys naar new rooster_techniek keys
-let allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('rooster_techniek_team') || '[]');
-let allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('rooster_techniek_services') || '[]');
-let allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('rooster_techniek_blockouts') || '[]');
+let allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
+let allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
+let allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
 
 // Sla direct op in juiste keys
 function initializeStorage() {
@@ -741,9 +741,9 @@ function saveData() {
 
 // Check voor web storage event listener
 window.addEventListener('storage', () => {
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
-    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || '[]');
-    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
+    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
+    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
     checkNewRegistrations();
 });
     const pending = allTeam.filter(m => m.role === 'Pending').length;
@@ -764,7 +764,7 @@ checkNewRegistrations();
 
 // Luister naar changes in localStorage (van andere tabs)
 window.addEventListener('storage', () => {
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
     checkNewRegistrations();
 });
 
@@ -789,7 +789,7 @@ function resetAdminPin() {
     }
     
     // Herlaad data
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
     
     // Debug: toon admin accounts
     const admins = allTeam.filter(m => m.admin);
@@ -896,7 +896,7 @@ function createAdminAccount() {
     localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
     
     // Reload de data om zeker te zijn
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
     
     alert('✅ Admin account aangemaakt!\n\nAdmin:\nNaam: ' + name + '\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
     hideAdminSetup();
@@ -916,7 +916,9 @@ function handleLogin() {
     }
     
     // Reload data om zeker te zijn dat alles up-to-date is
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || '[]');
+    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
+    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
+    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
     
     const user = allTeam.find(m => m.email.toLowerCase() === email && m.pin === pin);
     if (!user) {

@@ -269,18 +269,14 @@
 </head>
 <body>
 
-<div id="firebaseLoadingScreen" class="login-screen" style="display: flex;">
-    <div class="login-box" style="text-align: center;">
-        <h1>Rooster Techniek</h1>
-        <p class="subtitle">Kijk Omhoog</p>
-        <p style="margin-top: 20px;">🔄 Verbinden met de cloud...</p>
-    </div>
-</div>
-
-<div id="loginScreen" class="login-screen" style="display: none;">
+<div id="loginScreen" class="login-screen">
     <div class="login-box">
         <h1>Rooster Techniek</h1>
         <p class="subtitle">Kijk Omhoog</p>
+        
+        <div id="newRequestsBadge" style="background: #E74C3C; color: white; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; font-size: 14px;">
+            🔔 <span id="badgeCount">0</span> NIEUW(E) REGISTRATIE(S)
+        </div>
         
         <div class="form-group">
             <label>Email</label>
@@ -303,19 +299,12 @@
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
         
         <div style="text-align: center; margin-top: 10px;">
-            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPasswordMember()">Wachtwoord vergeten? (team-lid)</button>
-        </div>
-        <div style="text-align: center; margin-top: 6px;">
-            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten? (admin)</button>
+            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
         </div>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
             <p class="small-text" style="margin-bottom: 10px;">Nog geen account?</p>
             <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
-        </div>
-
-        <div id="adminSetupLink" style="margin-top: 15px; text-align: center; display: none;">
-            <button style="width: 100%; padding: 8px; font-size: 12px; background: transparent; color: #5B8FC7; box-shadow: none;" onclick="showAdminSetup()">Eerste keer hier? Admin account aanmaken</button>
         </div>
     </div>
 </div>
@@ -334,6 +323,10 @@
             <input type="email" id="adminEmail" placeholder="beheerder@mail.nl">
         </div>
         <div class="form-group">
+            <label>Jouw naam (bijv. Remko)</label>
+            <input type="text" id="adminName" placeholder="Remko">
+        </div>
+        <div class="form-group">
             <label>Admin PIN</label>
             <input type="password" id="adminPin" placeholder="kies een PIN">
         </div>
@@ -349,7 +342,7 @@
 <div id="forgotPasswordScreen" class="login-screen" style="display: none;">
     <div class="login-box">
         <h1>Wachtwoord Resetten</h1>
-        <p class="subtitle">Alleen voor de admin</p>
+        <p class="subtitle">Alleen voor admin</p>
         
         <div class="info-box">
             Beantwoord de veiligheidsvraag om je PIN te resetten
@@ -369,32 +362,6 @@
         </div>
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="resetAdminPin()">PIN Resetten</button>
         <button style="width: 100%; padding: 12px;" onclick="hideForgotPassword()">Terug</button>
-    </div>
-</div>
-
-<div id="forgotPasswordMemberScreen" class="login-screen" style="display: none;">
-    <div class="login-box">
-        <h1>Wachtwoord Resetten</h1>
-        <p class="subtitle">Voor team-leden</p>
-        
-        <div class="info-box">
-            Beantwoord de veiligheidsvraag om je eigen PIN te resetten. Je hoeft hiervoor niet naar de admin.
-        </div>
-        
-        <div class="form-group">
-            <label>Jouw email</label>
-            <input type="email" id="memberForgotEmail" placeholder="je@mail.nl">
-        </div>
-        <div class="form-group">
-            <label>Jouw geboortedatum</label>
-            <input type="date" id="memberForgotBirthDate">
-        </div>
-        <div class="form-group">
-            <label>Nieuwe PIN</label>
-            <input type="password" id="memberForgotNewPin" placeholder="Kies een PIN">
-        </div>
-        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="resetMemberPin()">PIN Resetten</button>
-        <button style="width: 100%; padding: 12px;" onclick="hideForgotPasswordMember()">Terug</button>
     </div>
 </div>
 
@@ -449,10 +416,10 @@
     <div id="adminDashboard" style="display: none;">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchAdminTab('overview')">Overzicht</button>
-            <button class="tab-btn" onclick="switchAdminTab('requests')">Registraties</button>
+            <button class="tab-btn" onclick="switchAdminTab('requests')">Registraties <span id="requestBadge" style="display: none; background: #E74C3C; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px;">0</span></button>
             <button class="tab-btn" onclick="switchAdminTab('team')">Team</button>
             <button class="tab-btn" onclick="switchAdminTab('services')">Diensten</button>
-            <button class="tab-btn" id="adminOnlyTabBtn" onclick="switchAdminTab('admin')">Admin</button>
+            <button class="tab-btn" onclick="switchAdminTab('admin')">Admin</button>
         </div>
 
         <!-- OVERVIEW -->
@@ -594,10 +561,6 @@
             <input type="password" id="teamPin" placeholder="kies een PIN">
         </div>
         <div class="form-group">
-            <label>Geboortedatum (optioneel, nodig voor eigen wachtwoord-reset)</label>
-            <input type="date" id="teamBirthDate">
-        </div>
-        <div class="form-group">
             <label>Status</label>
             <select id="teamStatus">
                 <option value="">Geen</option>
@@ -634,10 +597,6 @@
             <label>Omschrijving</label>
             <input type="text" id="serviceDesc" placeholder="bijv. Ochtendwoning">
         </div>
-        <div class="form-group">
-            <label>Voorganger / spreker</label>
-            <input type="text" id="serviceVoorganger" placeholder="bijv. Ds. Jansen">
-        </div>
         <div class="modal-buttons">
             <button onclick="closeAddServiceModal()">Annuleren</button>
             <button class="primary" onclick="addService()">Toevoegen</button>
@@ -673,116 +632,18 @@
     </div>
 </div>
 
-<!-- Firebase (gedeelde cloud-opslag) -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-
-<script>
-// Firebase configuratie (KOH Techniek rooster project)
-const firebaseConfig = {
-    apiKey: "AIzaSyAdu7M16hW34EDuk7-AcwERCXtOxklo0mI",
-    authDomain: "koh-techniek-rooster.firebaseapp.com",
-    projectId: "koh-techniek-rooster",
-    storageBucket: "koh-techniek-rooster.firebasestorage.app",
-    messagingSenderId: "377647153504",
-    appId: "1:377647153504:web:214ea5b40cd6261d71de05"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const teamDocRef = db.collection('koh_rooster').doc('team');
-const servicesDocRef = db.collection('koh_rooster').doc('services');
-const blockoutsDocRef = db.collection('koh_rooster').doc('blockouts');
-</script>
-
 <script>
 // Initialiseer data
 let currentUser = null;
-let allTeam = [];
-let allServices = [];
-let allBlockouts = [];
-let firebaseReady = false;
+let allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+let allServices = JSON.parse(localStorage.getItem('bethel_services') || '[]');
+let allBlockouts = JSON.parse(localStorage.getItem('bethel_blockouts') || '[]');
 
-function handleCloudDataChange() {
-    // Herschilder wat er nu op het scherm staat zodra data verandert (ook vanaf andere apparaten)
-    if (!currentUser) return;
-    if (currentUser.admin || currentUser.permission === 'editor') {
-        renderAdminDashboard();
-        const teamTab = document.getElementById('teamTab');
-        const servicesTab = document.getElementById('servicesTab');
-        const requestsTab = document.getElementById('requestsTab');
-        if (teamTab && teamTab.classList.contains('active')) renderTeamList();
-        if (servicesTab && servicesTab.classList.contains('active')) renderServicesList();
-        if (requestsTab && requestsTab.classList.contains('active')) renderRegistrationRequests();
-    } else {
-        renderTeamView();
-    }
-}
-
-let loadedParts = { team: false, services: false, blockouts: false };
-function checkInitialLoadDone() {
-    if (loadedParts.team && loadedParts.services && loadedParts.blockouts && !firebaseReady) {
-        firebaseReady = true;
-        document.getElementById('firebaseLoadingScreen').style.display = 'none';
-        document.getElementById('loginScreen').style.display = 'flex';
-        updateAdminSetupLinkVisibility();
-    }
-}
-
-teamDocRef.onSnapshot(doc => {
-    allTeam = doc.exists ? (doc.data().items || []) : [];
-    loadedParts.team = true;
-    checkInitialLoadDone();
-    if (firebaseReady) handleCloudDataChange();
-}, err => {
-    console.error('Firestore fout (team):', err);
-    alert('⚠️ Kon geen verbinding maken met de cloud-database. Controleer je internetverbinding en probeer het opnieuw.');
-});
-
-servicesDocRef.onSnapshot(doc => {
-    allServices = doc.exists ? (doc.data().items || []) : [];
-    loadedParts.services = true;
-    checkInitialLoadDone();
-    if (firebaseReady) handleCloudDataChange();
-}, err => console.error('Firestore fout (services):', err));
-
-blockoutsDocRef.onSnapshot(doc => {
-    allBlockouts = doc.exists ? (doc.data().items || []) : [];
-    loadedParts.blockouts = true;
-    checkInitialLoadDone();
-    if (firebaseReady) handleCloudDataChange();
-}, err => console.error('Firestore fout (blockouts):', err));
-
-function saveTeam() {
-    teamDocRef.set({ items: allTeam }).catch(err => {
-        console.error('Fout bij opslaan team:', err);
-        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
-    });
-}
-function saveServices() {
-    servicesDocRef.set({ items: allServices }).catch(err => {
-        console.error('Fout bij opslaan diensten:', err);
-        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
-    });
-}
-function saveBlockouts() {
-    blockoutsDocRef.set({ items: allBlockouts }).catch(err => {
-        console.error('Fout bij opslaan blokkades:', err);
-        alert('⚠️ Kon niet opslaan naar de cloud. Controleer je internetverbinding en probeer opnieuw.');
-    });
-}
-
-// Service worker uitgeschakeld: verstoorde netwerkverzoeken naar Firebase.
-// Bestaande registraties (van eerdere versies van de app) worden actief opgeruimd,
-// en de caches die de service worker aanlegde worden gewist.
+// Register service worker voor PWA
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(reg => reg.unregister());
-  }).catch(() => {});
-}
-if ('caches' in window) {
-  caches.keys().then(names => {
-    names.forEach(name => caches.delete(name));
-  }).catch(() => {});
+  navigator.serviceWorker.register('sw.js').catch(() => {
+    // Service worker is optional
+  });
 }
 
 function showRegistration() {
@@ -833,7 +694,10 @@ function submitRegistration() {
     };
     
     allTeam.push(registrationRequest);
-    saveTeam();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    
+    // Zet melding flag voor admin
+    localStorage.setItem('newRegistration_' + email, 'true');
     
     alert('✅ Registratie aangevraagd!\n\nJe account wacht op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
     hideRegistration();
@@ -847,6 +711,34 @@ function submitRegistration() {
     document.getElementById('regPin').value = '';
 }
 
+// Log voor debugging
+console.log('Geladen team:', allTeam);
+console.log('Admin exists:', allTeam.some(m => m.admin === true));
+
+// Check voor nieuwe registraties op page load
+function checkNewRegistrations() {
+    const pending = allTeam.filter(m => m.role === 'Pending').length;
+    const badge = document.getElementById('newRequestsBadge');
+    const badgeCount = document.getElementById('badgeCount');
+    
+    if (pending > 0 && document.getElementById('loginScreen').style.display === 'flex') {
+        badgeCount.textContent = pending;
+        badge.style.display = 'block';
+    }
+}
+
+// Check elke 5 seconden
+setInterval(checkNewRegistrations, 5000);
+
+// Check ook direct
+checkNewRegistrations();
+
+// Luister naar changes in localStorage (van andere tabs)
+window.addEventListener('storage', () => {
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    checkNewRegistrations();
+});
+
 function showForgotPassword() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('forgotPasswordScreen').style.display = 'flex';
@@ -855,71 +747,6 @@ function showForgotPassword() {
 function hideForgotPassword() {
     document.getElementById('forgotPasswordScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
-}
-
-function showForgotPasswordMember() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('forgotPasswordMemberScreen').style.display = 'flex';
-}
-
-function hideForgotPasswordMember() {
-    document.getElementById('forgotPasswordMemberScreen').style.display = 'none';
-    document.getElementById('loginScreen').style.display = 'flex';
-}
-
-function resetMemberPin() {
-    const email = document.getElementById('memberForgotEmail').value.trim().toLowerCase();
-    const birthDate = document.getElementById('memberForgotBirthDate').value;
-    const newPin = document.getElementById('memberForgotNewPin').value.trim();
-    
-    if (!email || !birthDate || !newPin) {
-        alert('Alle velden zijn verplicht');
-        return;
-    }
-    
-    // Herlaad data
-    
-    // Zoek team-lid (geen admin), case-insensitive op email
-    const member = allTeam.find(m => !m.admin && m.email.toLowerCase() === email);
-    if (!member) {
-        alert('❌ Geen team-lid gevonden met dit email adres.');
-        return;
-    }
-    
-    if (!member.birthDate) {
-        alert('❌ Voor jouw account is geen geboortedatum bekend.\n\nNeem contact op met de admin om je PIN te laten resetten.');
-        return;
-    }
-    
-    if (member.birthDate !== birthDate) {
-        alert('❌ Geboortedatum is onjuist');
-        return;
-    }
-    
-    if (newPin.length !== 4 || isNaN(newPin)) {
-        alert('PIN moet 4 cijfers zijn');
-        return;
-    }
-    
-    // Reset PIN
-    member.pin = newPin;
-    saveTeam();
-    
-    alert('✅ PIN gewijzigd. Je kunt nu inloggen.');
-    hideForgotPasswordMember();
-    
-    // Clear form
-    document.getElementById('memberForgotEmail').value = '';
-    document.getElementById('memberForgotBirthDate').value = '';
-    document.getElementById('memberForgotNewPin').value = '';
-}
-
-function updateAdminSetupLinkVisibility() {
-    const adminExists = allTeam.some(m => m.admin === true);
-    const link = document.getElementById('adminSetupLink');
-    if (link) {
-        link.style.display = adminExists ? 'none' : 'block';
-    }
 }
 
 function resetAdminPin() {
@@ -933,6 +760,7 @@ function resetAdminPin() {
     }
     
     // Herlaad data
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
     // Debug: toon admin accounts
     const admins = allTeam.filter(m => m.admin);
@@ -961,7 +789,7 @@ function resetAdminPin() {
     
     // Reset PIN
     admin.pin = newPin;
-    saveTeam();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
     alert('✅ PIN gewijzigd naar: ' + newPin + '\n\nJe kunt nu inloggen.');
     hideForgotPassword();
@@ -992,9 +820,10 @@ function createAdminAccount() {
     const email = document.getElementById('adminEmail').value.trim();
     const pin = document.getElementById('adminPin').value.trim();
     const birthYear = document.getElementById('adminBirthYear').value.trim();
+    const name = document.getElementById('adminName').value.trim() || 'Admin';
     
-    if (!email || !pin || !birthYear) {
-        alert('Email, PIN en geboortejaar zijn verplicht');
+    if (!email || !pin || !birthYear || !name) {
+        alert('Alle velden zijn verplicht');
         return;
     }
     
@@ -1012,7 +841,7 @@ function createAdminAccount() {
     
     // Voeg admin toe
     const adminAccount = {
-        name: 'Admin',
+        name: name,
         email: email,
         pin: pin,
         birthYear: birthYear,
@@ -1035,11 +864,15 @@ function createAdminAccount() {
     
     allTeam.push(adminAccount);
     allTeam.push(remkoAccount);
-    saveTeam();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
-    alert('✅ Admin account aangemaakt!\n\nAdmin:\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
+    // Reload de data om zeker te zijn
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
+    
+    alert('✅ Admin account aangemaakt!\n\nAdmin:\nNaam: ' + name + '\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
     hideAdminSetup();
     document.getElementById('adminEmail').value = '';
+    document.getElementById('adminName').value = '';
     document.getElementById('adminPin').value = '';
     document.getElementById('adminBirthYear').value = '';
 }
@@ -1053,6 +886,8 @@ function handleLogin() {
         return;
     }
     
+    // Reload data om zeker te zijn dat alles up-to-date is
+    allTeam = JSON.parse(localStorage.getItem('bethel_team') || '[]');
     
     const user = allTeam.find(m => m.email === email && m.pin === pin);
     if (!user) {
@@ -1071,20 +906,18 @@ function handleLogin() {
     document.getElementById('adminSetup').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     
-    const hasManagementAccess = user.admin || user.permission === 'editor';
-    
-    if (hasManagementAccess) {
+    if (user.admin) {
         document.getElementById('adminDashboard').style.display = 'block';
         document.getElementById('teamView').style.display = 'none';
-        
-        // Alleen echte admins zien de Admin-tab (data beheer / gevarenzone)
-        const adminOnlyBtn = document.getElementById('adminOnlyTabBtn');
-        if (adminOnlyBtn) {
-            adminOnlyBtn.style.display = user.admin ? 'inline-block' : 'none';
-        }
-        
-        switchAdminTab('overview');
         renderAdminDashboard();
+        
+        // Check voor nieuwe registraties
+        const pendingRequests = allTeam.filter(m => m.role === 'Pending');
+        if (pendingRequests.length > 0) {
+            setTimeout(() => {
+                alert('🔔 Je hebt ' + pendingRequests.length + ' registratieverzoek(en) te controleren!\n\nGa naar "Registraties" om deze goed te keuren.');
+            }, 500);
+        }
     } else {
         document.getElementById('adminDashboard').style.display = 'none';
         document.getElementById('teamView').style.display = 'block';
@@ -1101,6 +934,9 @@ function handleLogin() {
     
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPin').value = '';
+    
+    // Verberg badge
+    document.getElementById('newRequestsBadge').style.display = 'none';
 }
 
 function handleLogout() {
@@ -1109,26 +945,12 @@ function handleLogout() {
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function switchAdminTab(tab, btnEl) {
-    // Extra beveiliging: alleen echte admin mag op het Admin-tabblad
-    if (tab === 'admin' && !currentUser.admin) {
-        alert('❌ Alleen de hoofdbeheerder heeft toegang tot dit onderdeel.');
-        return;
-    }
-    
+function switchAdminTab(tab) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     
     document.getElementById(tab + 'Tab').classList.add('active');
-    
-    const clickedBtn = btnEl || (typeof event !== 'undefined' ? event.target : null);
-    if (clickedBtn) {
-        clickedBtn.classList.add('active');
-    } else {
-        // Programmatische aanroep zonder knop (bv. na inloggen): highlight de bijpassende knop
-        const fallbackBtn = document.querySelector(`.tab-btn[onclick*="'${tab}'"]`);
-        if (fallbackBtn) fallbackBtn.classList.add('active');
-    }
+    event.target.classList.add('active');
     
     if (tab === 'requests') renderRegistrationRequests();
     if (tab === 'team') renderTeamList();
@@ -1140,13 +962,22 @@ function renderAdminDashboard() {
     document.getElementById('serviceCount').textContent = allServices.length;
     document.getElementById('blockoutCount').textContent = allBlockouts.length;
     
+    // Toon badge voor registratieverzoeken
+    const pendingRequests = allTeam.filter(m => m.role === 'Pending').length;
+    const badge = document.getElementById('requestBadge');
+    if (pendingRequests > 0) {
+        badge.textContent = pendingRequests;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+    
     const upcoming = allServices.filter(s => new Date(s.date) >= new Date()).slice(0, 5);
     document.getElementById('upcomingServices').innerHTML = upcoming.length ? 
         upcoming.map(s => `
             <div class="service-card">
                 <strong>${s.desc || 'Dienst'}</strong><br>
                 <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
-                ${s.voorganger ? `<br><small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small>` : ''}
             </div>
         `).join('') : 
         '<p style="color: #999;">Geen komende diensten</p>';
@@ -1167,6 +998,15 @@ function renderAdminDashboard() {
 
 function renderRegistrationRequests() {
     const requests = allTeam.filter(m => m.role === 'Pending');
+    
+    // Update badge in tab
+    const badge = document.getElementById('requestBadge');
+    if (requests.length > 0) {
+        badge.textContent = requests.length;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
     
     if (requests.length === 0) {
         document.getElementById('registrationRequests').innerHTML = '<p style="color: #999;">Geen registratieverzoeken</p>';
@@ -1204,7 +1044,7 @@ function approveRegistration(email) {
     member.role = 'Video';
     member.approved = true;
     
-    saveTeam();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
     
     renderRegistrationRequests();
@@ -1216,7 +1056,7 @@ function rejectRegistration(email) {
     if (!confirm('Registratie afwijzen?')) return;
     
     allTeam = allTeam.filter(m => m.email !== email);
-    saveTeam();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
     alert('Registratie afgewezen');
     renderRegistrationRequests();
@@ -1248,7 +1088,6 @@ function renderTeamList() {
                      member.status === 'specialized' ? '🔧 Gespecialiseerd' :
                      member.status === 'reserve' ? '🔄 Reserve' :
                      member.status === 'unsuitable' ? '❌ Niet Geschikt' : member.status) + '</span>' : ''}
-                ${member.permission === 'editor' ? '<br><span class="badge" style="background:#5B8FC7; color:#fff;">🔑 Editor</span>' : ''}
             </div>
             <div style="display: flex; gap: 5px; width: 100%;">
                 <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Bewerk</button>
@@ -1268,7 +1107,6 @@ function renderServicesList() {
                 <div style="flex: 1;">
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small style="color: #666;">${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
-                    ${s.voorganger ? `<small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small><br>` : ''}
                     ${s.roles ? Object.entries(s.roles).map(([role, email]) => {
                         const person = allTeam.find(m => m.email === email);
                         return `<small><strong>${role}:</strong> ${person?.name || '–'}</small><br>`;
@@ -1293,19 +1131,11 @@ function renderTeamView() {
     document.getElementById('myServices').innerHTML = myServices.length ?
         myServices.map(s => {
             const isBlocked = allBlockouts.some(b => b.email === currentUser.email && b.date === s.date);
-            const collegas = Object.entries(s.roles || {})
-                .filter(([role, email]) => email && email !== currentUser.email)
-                .map(([role, email]) => {
-                    const person = allTeam.find(m => m.email === email);
-                    return `<small><strong>${role}:</strong> ${person?.name || '–'}</small>`;
-                }).join('<br>');
             return `
                 <div class="service-card" style="${isBlocked ? 'border-color: #dc3545; background: #fff5f5;' : ''}">
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
                     ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
-                    ${s.voorganger ? `<br><small><strong>Voorganger/spreker:</strong> ${s.voorganger}</small>` : ''}
-                    ${collegas ? `<br>${collegas}` : ''}
                 </div>
             `;
         }).join('') :
@@ -1443,7 +1273,6 @@ function addTeamMember() {
     const email = document.getElementById('teamEmail').value.trim();
     const role = document.getElementById('teamRole').value;
     const pin = document.getElementById('teamPin').value.trim();
-    const birthDate = document.getElementById('teamBirthDate').value;
     const status = document.getElementById('teamStatus').value;
     
     if (!name || !email || !pin) {
@@ -1456,8 +1285,8 @@ function addTeamMember() {
         return;
     }
     
-    allTeam.push({ name, email, role, pin, birthDate, status, admin: false, created: new Date().toISOString() });
-    saveTeam();
+    allTeam.push({ name, email, role, pin, status, admin: false, created: new Date().toISOString() });
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
     
     renderTeamList();
     renderAdminDashboard();
@@ -1466,7 +1295,6 @@ function addTeamMember() {
     document.getElementById('teamName').value = '';
     document.getElementById('teamEmail').value = '';
     document.getElementById('teamPin').value = '';
-    document.getElementById('teamBirthDate').value = '';
     document.getElementById('teamStatus').value = '';
 }
 
@@ -1474,8 +1302,8 @@ function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
         allBlockouts = allBlockouts.filter(b => b.email !== email);
-        saveTeam();
-        saveBlockouts();
+        localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+        localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
         renderTeamList();
         renderAdminDashboard();
     }
@@ -1494,7 +1322,6 @@ function addService() {
     const date = document.getElementById('serviceDate').value;
     const time = document.getElementById('serviceTime').value;
     const desc = document.getElementById('serviceDesc').value;
-    const voorganger = document.getElementById('serviceVoorganger').value.trim();
     
     if (!date || !time) {
         alert('Datum en tijd verplicht');
@@ -1506,22 +1333,21 @@ function addService() {
         roles[role] = '';
     });
     
-    allServices.push({ date, time, desc, voorganger, roles, created: new Date().toISOString() });
+    allServices.push({ date, time, desc, roles, created: new Date().toISOString() });
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
-    saveServices();
+    localStorage.setItem('bethel_services', JSON.stringify(allServices));
     
     renderServicesList();
     renderAdminDashboard();
     closeAddServiceModal();
     
     document.getElementById('serviceDesc').value = '';
-    document.getElementById('serviceVoorganger').value = '';
 }
 
 function deleteService(idx) {
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
-        saveServices();
+        localStorage.setItem('bethel_services', JSON.stringify(allServices));
         renderServicesList();
         renderAdminDashboard();
     }
@@ -1543,10 +1369,6 @@ function editService(idx) {
         <div class="form-group">
             <label>Omschrijving</label>
             <input type="text" id="editDesc" value="${s.desc || ''}">
-        </div>
-        <div class="form-group">
-            <label>Voorganger / spreker</label>
-            <input type="text" id="editVoorganger" value="${s.voorganger || ''}">
         </div>
         ${['Video', 'Geluid', 'Multimedia', 'Licht'].map(role => {
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
@@ -1575,13 +1397,12 @@ function saveServiceEdit(idx) {
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
     allServices[idx].desc = document.getElementById('editDesc').value;
-    allServices[idx].voorganger = document.getElementById('editVoorganger').value.trim();
     
     ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
-    saveServices();
+    localStorage.setItem('bethel_services', JSON.stringify(allServices));
     renderServicesList();
     renderAdminDashboard();
     closeEditServiceModal();
@@ -1610,7 +1431,7 @@ function addBlockout() {
     }
     
     allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    saveBlockouts();
+    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
     
     renderTeamView();
     closeBlockoutModal();
@@ -1619,7 +1440,7 @@ function addBlockout() {
 
 function deleteBlockout(idx) {
     allBlockouts.splice(idx, 1);
-    saveBlockouts();
+    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
     renderTeamView();
 }
 
@@ -1630,8 +1451,8 @@ function deleteMyAccount() {
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
     allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
     
-    saveTeam();
-    saveBlockouts();
+    localStorage.setItem('bethel_team', JSON.stringify(allTeam));
+    localStorage.setItem('bethel_blockouts', JSON.stringify(allBlockouts));
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();
@@ -1640,17 +1461,14 @@ function deleteMyAccount() {
 function editTeamMember(email) {
     const member = allTeam.find(m => m.email === email);
     
-    // Alleen de hoofdbeheerder (echte admin) mag rechten toekennen
-    const menuText = currentUser.admin
-        ? 'Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)\n4 = Rechten wijzigen (Geen / Editor / Admin)'
-        : 'Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Geboortedatum instellen (voor eigen wachtwoord-reset)';
-    const options = prompt(menuText, '1');
+    // Menu met opties
+    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten', '1');
     
     if (options === '1') {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
-            saveTeam();
+            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
             renderTeamList();
             renderAdminDashboard();
         }
@@ -1658,62 +1476,10 @@ function editTeamMember(email) {
         const newPin = prompt('Nieuwe PIN voor ' + member.name + ':', '');
         if (newPin !== null && newPin.trim() !== '') {
             member.pin = newPin.trim();
-            saveTeam();
+            localStorage.setItem('bethel_team', JSON.stringify(allTeam));
             alert('✅ PIN gewijzigd naar: ' + newPin);
             renderTeamList();
         }
-    } else if (options === '3') {
-        const newBirthDate = prompt('Geboortedatum voor ' + member.name + ' (formaat: JJJJ-MM-DD):', member.birthDate || '');
-        if (newBirthDate !== null) {
-            if (newBirthDate.trim() !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(newBirthDate.trim())) {
-                alert('Ongeldig formaat. Gebruik JJJJ-MM-DD, bijv. 1990-05-15');
-                return;
-            }
-            member.birthDate = newBirthDate.trim();
-            saveTeam();
-            alert('✅ Geboortedatum ingesteld. ' + member.name + ' kan nu zelf de PIN resetten.');
-            renderTeamList();
-        }
-    } else if (options === '4') {
-        if (!currentUser.admin) {
-            alert('❌ Alleen de hoofdbeheerder kan rechten wijzigen.');
-            return;
-        }
-        if (member.email === currentUser.email) {
-            alert('❌ Je kunt je eigen rechten niet wijzigen.');
-            return;
-        }
-        const newPermission = prompt(
-            'Rechten voor ' + member.name + ':\n\n' +
-            'geen = Gewoon team-lid (ziet alleen eigen rooster)\n' +
-            'editor = Editor (mag diensten en team invullen, geen toegang tot data-beheer)\n' +
-            'admin = Volledig beheerder (zelfde rechten als jij)\n\n' +
-            'Typ: geen / editor / admin',
-            member.admin ? 'admin' : (member.permission === 'editor' ? 'editor' : 'geen')
-        );
-        if (newPermission === null) return;
-        
-        const choice = newPermission.trim().toLowerCase();
-        if (choice === 'geen') {
-            member.admin = false;
-            member.permission = '';
-            alert('✅ ' + member.name + ' is nu een gewoon team-lid.');
-        } else if (choice === 'editor') {
-            member.admin = false;
-            member.permission = 'editor';
-            alert('✅ ' + member.name + ' is nu Editor: mag diensten en team invullen.');
-        } else if (choice === 'admin') {
-            member.admin = true;
-            member.permission = '';
-            alert('✅ ' + member.name + ' is nu volledig beheerder.');
-        } else {
-            alert('Ongeldige keuze. Kies geen, editor of admin.');
-            return;
-        }
-        saveTeam();
-        renderTeamList();
-        renderAdminDashboard();
-        updateAdminSetupLinkVisibility();
     }
 }
 
@@ -1734,22 +1500,13 @@ function exportAllData() {
 }
 
 function resetAllData() {
-    if (!confirm('WAARSCHUWING: Dit verwijdert ALLES, voor iedereen, op alle apparaten. Weet je het zeker?')) return;
+    if (!confirm('WAARSCHUWING: Dit verwijdert ALLES. Weet je het zeker?')) return;
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Typ "VERWIJDER" om te bevestigen.')) return;
     
     if (prompt('Type "VERWIJDEREN" om te bevestigen:') === 'VERWIJDEREN') {
-        Promise.all([
-            teamDocRef.set({ items: [] }),
-            servicesDocRef.set({ items: [] }),
-            blockoutsDocRef.set({ items: [] })
-        ]).then(() => {
-            localStorage.clear();
-            alert('Alle data is verwijderd.');
-            location.reload();
-        }).catch(err => {
-            console.error(err);
-            alert('⚠️ Er ging iets mis bij het verwijderen. Controleer je internetverbinding.');
-        });
+        localStorage.clear();
+        alert('Alle data is verwijderd.');
+        location.reload();
     }
 }
 </script>

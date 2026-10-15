@@ -1588,12 +1588,12 @@ function approveRegistration(email) {
     const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     if (!member) return;
     
-    // Zet rol standaard op Video als niet ingesteld
-    member.role = 'Video';
+    // Nieuw goedgekeurd lid krijgt nog geen rol; admin kent die later toe
+    member.role = 'Geen rol';
     member.approved = true;
     
     saveData('team', allTeam);
-    alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
+    alert('✅ ' + member.name + ' is goedgekeurd!\nGeen rol toegekend. Stel de rol in via Team → Bewerk.');
     
     renderRegistrationRequests();
     renderTeamList();

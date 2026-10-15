@@ -749,6 +749,11 @@ const ITEM_KEY = {
 
 // Alleen je eigen wijzigingen naar de server sturen, samengevoegd met de actuele lijst
 function saveData(key, value) {
+    if (!loadedKeys[key]) {
+        console.warn('Opslaan geblokkeerd: ' + key + ' nog niet geladen');
+        showModal('Even geduld', '⏳ Gegevens worden nog geladen. Probeer het over een paar seconden opnieuw.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
     const kf = ITEM_KEY[key];
     const newList = JSON.parse(JSON.stringify(value));
     const oldList = lastSynced[key] || [];
@@ -1000,33 +1005,7 @@ function closeModal() {
 }
 
 // EVENT DELEGATION - Knoppen werken altijd, ook na innerHTML updates
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    
-    const onclick = btn.getAttribute('onclick');
-    if (!onclick) return;
-    
-    // Parse en voer uit
-    try {
-        const match = onclick.match(/(\w+)\((.*?)\)/);
-        if (match) {
-            const funcName = match[1];
-            const args = match[2];
-            
-            // Voer functie uit met arguments
-            if (window[funcName]) {
-                if (args) {
-                    eval(`window['${funcName}'](${args})`);
-                } else {
-                    window[funcName]();
-                }
-            }
-        }
-    } catch (err) {
-        console.error('Button click error:', err);
-    }
-});
+// Knoppen werken via hun eigen onclick (geen extra click-handler meer)
 
 // Auto-init test data if completely empty (NO data at all)
 // Check if there's absolutely no data
@@ -1420,10 +1399,7 @@ function biometricLogin() {
 function handleLogout() {
     currentUser = null;
     
-    // Reset alle data in geheugen - volgende login zal nieuw laden
-    allTeam = [];
-    allServices = [];
-    allBlockouts = [];
+    // Data blijft in geheugen; de live-verbinding houdt het actueel
     
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';

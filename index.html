@@ -1092,7 +1092,8 @@ async function createAdminAccount() {
     // Controleer op de SERVER of er al een admin is
     let serverTeam = [];
     try {
-        const snap = await db.ref(DATA_PATHS.team).once('value');
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+        const snap = await Promise.race([db.ref(DATA_PATHS.team).once('value'), timeout]);
         serverTeam = toArray(snap.val());
     } catch (err) {
         showModal('Fout', '❌ Kan de server niet bereiken. Controleer je internetverbinding.', [{ text: 'OK', action: closeModal }]);

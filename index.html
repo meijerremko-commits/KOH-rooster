@@ -872,16 +872,6 @@ console.log('Geladen team:', allTeam);
 console.log('Admin exists:', allTeam.some(m => m.admin === true));
 
 // Herlaad data en sla op in nieuwe format
-function saveData() {
-    saveData('team', allTeam);
-    saveData('services', allServices);
-    saveData('blockouts', allBlockouts);
-    
-    // Keep old keys too for extra safety
-    saveData('team', allTeam);
-    saveData('services', allServices);
-    saveData('blockouts', allBlockouts);
-}
 
 // Check voor web storage event listener
 window.addEventListener('storage', () => {

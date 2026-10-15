@@ -1056,18 +1056,7 @@ function resetAdminPin() {
 }
 
 function cleanResetAndSetup() {
-    // Wis ALLES uit localStorage voordat we admin setup starten
-    // Dit lost problemen op als data corrupt is
-    allTeam = [];
-    allServices = [];
-    allBlockouts = [];
-    db.ref('rooster').remove();
-    
-    // Herlaad met schone slate
-    allTeam = [];
-    allServices = [];
-    allBlockouts = [];
-    
+    // Alleen het formulier tonen. Er wordt niets gewist.
     showAdminSetup();
 }
 
@@ -1087,7 +1076,7 @@ function hideAdminSetup() {
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function createAdminAccount() {
+async function createAdminAccount() {
     const email = document.getElementById('adminEmail').value.trim().toLowerCase();
     const pin = document.getElementById('adminPin').value.trim();
     const birthYear = document.getElementById('adminBirthYear').value.trim();
@@ -1100,8 +1089,17 @@ function createAdminAccount() {
     
     // Herlaad team data (clean slate)
     
-    // Check als admin al bestaat
-    const adminExists = allTeam.some(m => m.admin === true);
+    // Controleer op de SERVER of er al een admin is
+    let serverTeam = [];
+    try {
+        const snap = await db.ref(DATA_PATHS.team).once('value');
+        serverTeam = toArray(snap.val());
+    } catch (err) {
+        showModal('Fout', '❌ Kan de server niet bereiken. Controleer je internetverbinding.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    allTeam = serverTeam;
+    const adminExists = serverTeam.some(m => m.admin === true);
     if (adminExists) {
         showModal('Fout', '❌ Admin account bestaat al!\n\nAls je de admin wilt resetten, vraag een beheerder.', [{ text: 'OK', action: closeModal }]);
         return;

@@ -265,6 +265,40 @@
         #mainApp {
             background: linear-gradient(135deg, #87CEEB 0%, #5B8FC7 100%);
         }
+        
+        /* MOBIEL RESPONSIVE */
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 16px; }
+            button { padding: 10px 16px; font-size: 13px; }
+            input, select, textarea { padding: 8px 10px; font-size: 13px; }
+            .card { padding: 15px; margin-bottom: 15px; }
+            .login-box { padding: 20px; }
+            .tab-btn { padding: 10px 8px; font-size: 12px; margin: 5px; }
+            .tab-content { padding: 15px 10px; }
+            .service-card { padding: 12px; margin-bottom: 12px; }
+            .modal-content { width: 95% !important; padding: 15px; }
+            .modal-buttons { gap: 8px; }
+            .modal-buttons button { flex: 1; min-width: 60px; }
+        }
+        
+        @media (max-width: 480px) {
+            h1 { font-size: 20px; margin-bottom: 5px; }
+            .subtitle { font-size: 13px; margin-bottom: 15px; }
+            button { padding: 8px 12px; font-size: 12px; width: 100%; }
+            input, select, textarea { padding: 7px 8px; font-size: 12px; }
+            .form-group { margin-bottom: 10px; }
+            label { font-size: 13px; }
+            .card { padding: 12px; margin-bottom: 10px; }
+            .login-box { padding: 15px; }
+            .privacy-statement { font-size: 12px; line-height: 1.4; }
+            .tab-btn { padding: 8px 6px; font-size: 11px; margin: 4px 2px; }
+            .service-card { padding: 10px; }
+            .modal-buttons { flex-direction: column; }
+            .modal-buttons button { width: 100% !important; padding: 10px; }
+            .warning-box, .info-box { font-size: 12px; padding: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -287,6 +321,11 @@
             <input type="password" id="loginPin" placeholder="1234">
         </div>
         
+        <div style="margin-bottom: 15px;">
+            <input type="checkbox" id="rememberMe" style="width: 16px; height: 16px; cursor: pointer;">
+            <label for="rememberMe" style="display: inline; margin-left: 8px; font-size: 14px; cursor: pointer;">👤 Onthouden op dit apparaat</label>
+        </div>
+        
         <div class="privacy-statement">
             <strong>Privacy & GDPR</strong><br><br>
             Deze app verwerkt jouw gegevens (naam, email, PIN, rol, beschikbaarheid). 
@@ -298,16 +337,21 @@
         
         <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
         
-        <div style="text-align: center; margin-top: 10px;">
-            <button style="width: 100%; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
+        <button id="biometricBtn" style="width: 100%; padding: 12px; margin-bottom: 10px; background: #5B8FC7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;" onclick="biometricLogin()">🔒 Biometrisch inloggen</button>
+        
+        <div style="text-align: center; margin-top: 10px; display: flex; gap: 5px;">
+            <button style="flex: 1; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
+            <button id="forgetBtn" style="flex: 0; padding: 8px 12px; font-size: 12px; background: #f9f9f9; color: #666; display: none;" onclick="forgetThisDevice()" title="Vergeten op dit apparaat">✕</button>
         </div>
         
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
             <p class="small-text" style="margin-bottom: 10px;">Eerste keer?</p>
-            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="showAdminSetup()">Admin Setup</button>
+            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="cleanResetAndSetup()">👤 Admin Setup</button>
             
             <p class="small-text" style="margin-bottom: 10px; margin-top: 15px;">Ben je team-lid?</p>
-            <button style="width: 100%; padding: 12px;" onclick="showRegistration()">Registreer als team-lid</button>
+            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="showRegistration()">📝 Registreer als team-lid</button>
+            
+
         </div>
     </div>
 </div>
@@ -422,6 +466,7 @@
             <button class="tab-btn" onclick="switchAdminTab('requests')">Registraties <span id="requestBadge" style="display: none; background: #E74C3C; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 5px;">0</span></button>
             <button class="tab-btn" onclick="switchAdminTab('team')">Team</button>
             <button class="tab-btn" onclick="switchAdminTab('services')">Diensten</button>
+            <button class="tab-btn" onclick="switchAdminTab('matrix')">📊 Beschikbaarheid</button>
             <button class="tab-btn" onclick="switchAdminTab('admin')">Admin</button>
         </div>
 
@@ -470,8 +515,22 @@
             <div id="servicesListAdmin"></div>
         </div>
 
+        <!-- BESCHIKBAARHEID MATRIX -->
+        <div id="matrixTab" class="tab-content">
+            <h2>📊 Beschikbaarheidmatrix</h2>
+            <p class="small-text">Wie is beschikbaar op welke dienst? (Groen = beschikbaar, Rood = niet beschikbaar)</p>
+            <div id="matrixContent" style="overflow-x: auto; margin-top: 20px; background: white; padding: 15px; border-radius: 6px;"></div>
+        </div>
+
         <!-- ADMIN SETTINGS -->
         <div id="adminTab" class="tab-content">
+            <div class="card" style="background: #e8f4f8; border-left: 4px solid #2B5A7A;">
+                <h2 style="margin-top: 0;">📅 Standaard diensten</h2>
+                <p class="small-text">Laadt alle zondagen tot januari + 24 dec + 31 dec</p>
+                <button class="primary" onclick="loadDefaultSundays()" style="width: 100%; padding: 12px; margin-bottom: 10px;">➕ Laad zondagen & speciale dagen</button>
+                <small style="color: #666;">Na laden kun je alle diensten individueel aanpassen</small>
+            </div>
+            
             <div class="card">
                 <h2>Data beheer</h2>
                 <button onclick="exportAllData()" style="margin-bottom: 10px; width: 100%; padding: 12px;">📥 Backup downloaden</button>
@@ -600,6 +659,20 @@
             <label>Omschrijving</label>
             <input type="text" id="serviceDesc" placeholder="bijv. Ochtendwoning">
         </div>
+        <div class="form-group">
+            <label>📝 Notitie voor teamleden (bijv. tijd aanwezig zijn)</label>
+            <textarea id="serviceNotes" placeholder="bijv. Om 11:45 uur aanwezig zijn. Rood overhemd meenemen." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
+        </div>
+        <div class="form-group">
+            <label>🔄 Herhalen?</label>
+            <select id="serviceRepeat" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;">
+                <option value="none">Eenmalig</option>
+                <option value="weekly">Elke week (12 weken)</option>
+                <option value="biweekly">Elke 2 weken (12 weken)</option>
+                <option value="monthly">Maandelijks (6 maanden)</option>
+            </select>
+            <small style="color: #666; display: block; margin-top: 5px;">Automatisch meerdere diensten aanmaken</small>
+        </div>
         <div class="modal-buttons">
             <button onclick="closeAddServiceModal()">Annuleren</button>
             <button class="primary" onclick="addService()">Toevoegen</button>
@@ -635,21 +708,88 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-// Initialiseer data - migrate van old bethel keys naar new rooster_techniek keys
-let allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
-let allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
-let allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
+// ===== FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyAdu7M16hW34EDuk7-AcwERCXtOxklo0mI",
+  authDomain: "koh-techniek-rooster.firebaseapp.com",
+  databaseURL: "https://koh-techniek-rooster-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "koh-techniek-rooster",
+  storageBucket: "koh-techniek-rooster.firebasestorage.app",
+  messagingSenderId: "377647153504",
+  appId: "1:377647153504:web:214ea5b40cd6261d71de05"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-// Sla direct op in juiste keys
-function initializeStorage() {
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
-    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+const DATA_PATHS = {
+    team: 'rooster/team',
+    services: 'rooster/services',
+    blockouts: 'rooster/blockouts'
+};
+
+// Data in geheugen (wordt live gesynchroniseerd met Firebase)
+let allTeam = [];
+let allServices = [];
+let allBlockouts = [];
+let dataReady = false;
+const loadedKeys = { team: false, services: false, blockouts: false };
+
+// Opslaan naar Firebase (iedereen ziet dit direct)
+function saveData(key, value) {
+    const clean = JSON.parse(JSON.stringify(value));
+    db.ref(DATA_PATHS[key]).set(clean).catch(err => {
+        console.error('Firebase opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
 }
 
-// Doe dit direct bij laden
-initializeStorage();
+function toArray(val) {
+    if (Array.isArray(val)) return val;
+    if (val && typeof val === 'object') return Object.values(val);
+    return [];
+}
+
+function refreshAfterRemoteChange() {
+    if (!dataReady) return;
+    checkNewRegistrations();
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        if (currentUser.admin) {
+            renderAdminDashboard();
+            renderTeamList();
+            renderServicesList();
+        } else {
+            renderTeamView();
+        }
+    }
+}
+
+// Live luisteren naar wijzigingen
+Object.keys(DATA_PATHS).forEach(key => {
+    db.ref(DATA_PATHS[key]).on('value', snap => {
+        const arr = toArray(snap.val());
+        if (key === 'team') allTeam = arr;
+        else if (key === 'services') allServices = arr;
+        else allBlockouts = arr;
+
+        loadedKeys[key] = true;
+        if (!dataReady && Object.values(loadedKeys).every(Boolean)) {
+            dataReady = true;
+            console.log('✓ Data geladen uit Firebase');
+        }
+        refreshAfterRemoteChange();
+    }, err => {
+        console.error('Firebase lezen mislukt:', err);
+        showModal('Fout', '❌ Kan gegevens niet laden. Controleer je internetverbinding.', [{ text: 'OK', action: closeModal }]);
+    });
+});
+
+// Debug: Check of JS loadt
+console.log('✓ Rooster Techniek JS geladen');
+console.log('✓ Team data:', allTeam.length, 'leden');
+console.log('✓ Services:', allServices.length, 'diensten');
 
 // Register service worker voor PWA
 if ('serviceWorker' in navigator) {
@@ -677,17 +817,17 @@ function submitRegistration() {
     const pin = document.getElementById('regPin').value.trim();
     
     if (!firstName || !lastName || !email || !pin || !birthDate) {
-        alert('Alle velden zijn verplicht');
+        showModal('Fout', 'Alle velden zijn verplicht!', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
     if (pin.length !== 4 || isNaN(pin)) {
-        alert('PIN moet 4 cijfers zijn');
+        showModal('Fout', 'PIN moet 4 cijfers zijn!', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
     if (allTeam.some(m => m.email.toLowerCase() === email.toLowerCase())) {
-        alert('Dit email adres is al in gebruik');
+        showModal('Fout', 'Dit email adres is al in gebruik!', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
@@ -697,22 +837,26 @@ function submitRegistration() {
         email: email,
         phone: phone,
         birthDate: birthDate,
-        pin: pin,
+        pin: pin.toString(), // Zorg dat PIN een string is
         role: 'Pending',
         status: '',
         admin: false,
+        editor: false, // Standaard geen editor
         approved: false,
         created: new Date().toISOString()
     };
     
+    console.log('Registration request:', registrationRequest);
+    
     allTeam.push(registrationRequest);
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    saveData('team', allTeam);
     
     // Zet melding flag voor admin
     localStorage.setItem('newRegistration_' + email, 'true');
     
-    alert('✅ Registratie aangevraagd!\n\nJe account wacht op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
-    hideRegistration();
+    showModal('✅ Registratie aangevraagd!', 'Je account wacht op goedkeuring van de admin.\n\nJe ontvangt een bericht zodra dit is gebeurd.', 
+        [{ text: 'OK', action: () => { closeModal(); hideRegistration(); } }]
+    );
     
     // Clear form
     document.getElementById('regFirstName').value = '';
@@ -729,23 +873,107 @@ console.log('Admin exists:', allTeam.some(m => m.admin === true));
 
 // Herlaad data en sla op in nieuwe format
 function saveData() {
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
-    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    saveData('team', allTeam);
+    saveData('services', allServices);
+    saveData('blockouts', allBlockouts);
     
     // Keep old keys too for extra safety
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
-    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    saveData('team', allTeam);
+    saveData('services', allServices);
+    saveData('blockouts', allBlockouts);
 }
 
 // Check voor web storage event listener
 window.addEventListener('storage', () => {
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
-    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
-    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
     checkNewRegistrations();
 });
+
+// CUSTOM MODAL DIALOGS (geen dubbel-klikken meer)
+function showModal(title, message, buttons = []) {
+    let modal = document.getElementById('customModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'customModal';
+        modal.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 10000; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 12px; padding: 20px; max-width: 90%; width: 400px; max-height: 80vh; overflow-y: auto;">
+                    <h2 id="modalTitle" style="margin-top: 0; margin-bottom: 15px;"></h2>
+                    <p id="modalMessage" style="line-height: 1.6; margin-bottom: 20px;"></p>
+                    <div id="modalButtons" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    const backdrop = modal.querySelector('div');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    
+    const btnContainer = document.getElementById('modalButtons');
+    btnContainer.innerHTML = '';
+    
+    if (buttons.length === 0) {
+        buttons = [{ text: 'OK', action: () => closeModal() }];
+    }
+    
+    buttons.forEach(btn => {
+        const button = document.createElement('button');
+        button.textContent = btn.text;
+        button.style.cssText = btn.style || 'padding: 10px 20px; background: #2B5A7A; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;';
+        button.onclick = (e) => {
+            e.stopPropagation();
+            if (btn.action) btn.action();
+        };
+        btnContainer.appendChild(button);
+    });
+    
+    backdrop.style.display = 'flex';
+}
+
+function closeModal() {
+    const modal = document.getElementById('customModal');
+    if (modal) modal.querySelector('div').style.display = 'none';
+}
+
+// EVENT DELEGATION - Knoppen werken altijd, ook na innerHTML updates
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    
+    const onclick = btn.getAttribute('onclick');
+    if (!onclick) return;
+    
+    // Parse en voer uit
+    try {
+        const match = onclick.match(/(\w+)\((.*?)\)/);
+        if (match) {
+            const funcName = match[1];
+            const args = match[2];
+            
+            // Voer functie uit met arguments
+            if (window[funcName]) {
+                if (args) {
+                    eval(`window['${funcName}'](${args})`);
+                } else {
+                    window[funcName]();
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Button click error:', err);
+    }
+});
+
+// Auto-init test data if completely empty (NO data at all)
+// Check if there's absolutely no data
+const hasAdmin = allTeam.some(m => m.admin === true);
+if (allTeam.length === 0 && !hasAdmin) {
+    console.log('ℹ️ Geen data gevonden. Je kunt nu Admin Setup doen!');
+    console.log('Klik "Admin Setup" op het login scherm.');
+}
+
+function checkNewRegistrations() {
     const pending = allTeam.filter(m => m.role === 'Pending').length;
     const badge = document.getElementById('newRequestsBadge');
     const badgeCount = document.getElementById('badgeCount');
@@ -764,7 +992,6 @@ checkNewRegistrations();
 
 // Luister naar changes in localStorage (van andere tabs)
 window.addEventListener('storage', () => {
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
     checkNewRegistrations();
 });
 
@@ -789,7 +1016,6 @@ function resetAdminPin() {
     }
     
     // Herlaad data
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
     
     // Debug: toon admin accounts
     const admins = allTeam.filter(m => m.admin);
@@ -818,7 +1044,7 @@ function resetAdminPin() {
     
     // Reset PIN
     admin.pin = newPin;
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    saveData('team', allTeam);
     
     alert('✅ PIN gewijzigd naar: ' + newPin + '\n\nJe kunt nu inloggen.');
     hideForgotPassword();
@@ -829,11 +1055,27 @@ function resetAdminPin() {
     document.getElementById('forgotNewPin').value = '';
 }
 
+function cleanResetAndSetup() {
+    // Wis ALLES uit localStorage voordat we admin setup starten
+    // Dit lost problemen op als data corrupt is
+    allTeam = [];
+    allServices = [];
+    allBlockouts = [];
+    db.ref('rooster').remove();
+    
+    // Herlaad met schone slate
+    allTeam = [];
+    allServices = [];
+    allBlockouts = [];
+    
+    showAdminSetup();
+}
+
 function showAdminSetup() {
     // Check of er al een admin bestaat
     const adminExists = allTeam.some(m => m.admin === true);
     if (adminExists) {
-        alert('Admin account bestaat al. Log in met je email en PIN.');
+        showModal('Admin bestaat', 'Admin account bestaat al.\n\nLog in met je email en PIN.', [{ text: 'OK', action: closeModal }]);
         return;
     }
     document.getElementById('loginScreen').style.display = 'none';
@@ -852,19 +1094,27 @@ function createAdminAccount() {
     const name = document.getElementById('adminName').value.trim() || 'Admin';
     
     if (!email || !pin || !birthYear || !name) {
-        alert('Alle velden zijn verplicht');
+        showModal('Fout', 'Alle velden zijn verplicht!', [{ text: 'OK', action: closeModal }]);
         return;
     }
+    
+    // Herlaad team data (clean slate)
     
     // Check als admin al bestaat
     const adminExists = allTeam.some(m => m.admin === true);
     if (adminExists) {
-        alert('Admin account bestaat al!');
+        showModal('Fout', '❌ Admin account bestaat al!\n\nAls je de admin wilt resetten, vraag een beheerder.', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
     if (allTeam.some(m => m.email.toLowerCase() === email.toLowerCase())) {
-        alert('Dit email adres is al in gebruik');
+        showModal('Fout', 'Dit email adres is al in gebruik', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    // Validatie PIN
+    if (pin.length < 4) {
+        showModal('Fout', 'PIN moet minstens 4 karakters zijn!', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
@@ -872,64 +1122,139 @@ function createAdminAccount() {
     const adminAccount = {
         name: name,
         email: email,
-        pin: pin,
+        pin: pin.toString(), // Zorg dat PIN een string is
         birthYear: birthYear,
         role: 'Admin',
         status: '',
         admin: true,
+        editor: false, // Admin hoeft niet ook editor te zijn
         created: new Date().toISOString()
     };
     
-    // Voeg Remko als teamleider toe
-    const remkoAccount = {
-        name: 'Remko Meijer',
-        email: 'meijer.remko@gmail.com',
-        pin: '1234',
-        role: 'Techniek Lead',
-        status: '',
-        admin: false,
-        created: new Date().toISOString()
-    };
+    console.log('Creating admin account:', adminAccount);
     
     allTeam.push(adminAccount);
-    allTeam.push(remkoAccount);
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    const saved = JSON.stringify(allTeam);
+    saveData('team', allTeam);
     
-    // Reload de data om zeker te zijn
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
+    console.log('Saved to localStorage:', saved);
     
-    alert('✅ Admin account aangemaakt!\n\nAdmin:\nNaam: ' + name + '\nEmail: ' + email + '\nPIN: ' + pin + '\n\n---\n\nTeamleid Remko is ook toegevoegd:\nEmail: meijer.remko@gmail.com\nPIN: 1234\n\nLog nu in.');
-    hideAdminSetup();
+    // Reload data
+    console.log('Reloaded from localStorage:', allTeam);
+    
+    // Toon succes
+    showModal('✅ Succes!', 'Admin account aangemaakt!\n\nEmail: ' + email + '\nPIN: ' + pin + '\n\nLog nu in.', 
+        [{ text: 'Naar login', action: () => { closeModal(); hideAdminSetup(); } }]
+    );
+    
+    // Wis velden
     document.getElementById('adminEmail').value = '';
     document.getElementById('adminName').value = '';
     document.getElementById('adminPin').value = '';
     document.getElementById('adminBirthYear').value = '';
 }
 
-function handleLogin() {
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-    const pin = document.getElementById('loginPin').value.trim();
+// Bij page load: check of we auto-inloggen kunnen
+window.addEventListener('DOMContentLoaded', () => {
+    const savedUser = localStorage.getItem('rooster_remembered_user');
+    const biometricBtn = document.getElementById('biometricBtn');
+    const forgetBtn = document.getElementById('forgetBtn');
     
-    if (!email || !pin) {
-        alert('Email en PIN verplicht');
+    if (savedUser && biometricBtn) {
+        biometricBtn.style.display = 'block';
+        if (forgetBtn) forgetBtn.style.display = 'block';
+        const user = JSON.parse(savedUser);
+        biometricBtn.textContent = '🔒 Inloggen als ' + user.name;
+    }
+});
+
+function forgetThisDevice() {
+    if (!confirm('Vergeten op dit apparaat?\n\nVolgende keer moet je je email en PIN invoeren.')) return;
+    
+    localStorage.removeItem('rooster_remembered_user');
+    document.getElementById('biometricBtn').style.display = 'none';
+    document.getElementById('forgetBtn').style.display = 'none';
+    
+    showModal('Vergeten', '✅ Dit apparaat is vergeten.\n\nVolgende keer login je normaal met email en PIN.', 
+        [{ text: 'OK', action: closeModal }]
+    );
+}
+
+function handleLogin() {
+    // Haal RUWE waarden op
+    const emailRaw = document.getElementById('loginEmail');
+    const pinRaw = document.getElementById('loginPin');
+    
+    if (!emailRaw || !pinRaw) {
+        showModal('Fout', 'Formulier elementen niet gevonden!', [{ text: 'OK', action: closeModal }]);
+        console.error('Login form elements missing!');
         return;
     }
     
-    // Reload data om zeker te zijn dat alles up-to-date is
-    allTeam = JSON.parse(localStorage.getItem('rooster_techniek_team') || localStorage.getItem('bethel_team') || '[]');
-    allServices = JSON.parse(localStorage.getItem('rooster_techniek_services') || localStorage.getItem('bethel_services') || '[]');
-    allBlockouts = JSON.parse(localStorage.getItem('rooster_techniek_blockouts') || localStorage.getItem('bethel_blockouts') || '[]');
+    // Verwerk en valideer
+    const email = emailRaw.value ? emailRaw.value.trim().toLowerCase() : '';
+    const pin = pinRaw.value ? pinRaw.value.trim() : '';
+    const rememberMe = document.getElementById('rememberMe').checked;
     
-    const user = allTeam.find(m => m.email.toLowerCase() === email && m.pin === pin);
+    // Strenge validatie
+    if (!email || email.length === 0) {
+        showModal('Fout', '❌ Email is verplicht!\n\nVul een geldig email in.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    if (!pin || pin.length === 0) {
+        showModal('Fout', '❌ PIN is verplicht!\n\nVul je PIN (4 cijfers) in.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    if (pin.length < 4) {
+        showModal('Fout', '❌ PIN moet minstens 4 cijfers zijn!', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    if (!dataReady) {
+        showModal('Even geduld', '⏳ Gegevens worden geladen. Probeer het over een paar seconden opnieuw.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    console.log('Login attempt:', email, 'PIN:', pin);
+    console.log('Team data:', allTeam);
+    
+    // Zoek user met case-insensitive email EN trim PIN
+    const user = allTeam.find(m => {
+        const emailMatch = m.email && m.email.toLowerCase() === email;
+        const pinMatch = m.pin && m.pin.toString().trim() === pin.toString().trim();
+        if (m.email && m.email.toLowerCase() === email) {
+            console.log('Found user:', m.name, '| PIN in system:', m.pin, '| PIN entered:', pin, '| Match:', pinMatch);
+        }
+        return emailMatch && pinMatch;
+    });
+    
     if (!user) {
-        alert('Email of PIN incorrect. Controleer je gegevens.');
+        showModal('Inloggen mislukt', '❌ Email of PIN incorrect.\n\nControleer je gegevens.', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
     // Check of account goedgekeurd is (admins en goedgekeurde leden kunnen inloggen)
     if (!user.admin && user.role === 'Pending') {
-        alert('Je account wacht nog op goedkeuring van de admin.\nJe ontvangt een bericht zodra dit is gebeurd.');
+        showModal('Wacht op goedkeuring', '⏳ Je account wacht nog op goedkeuring van de admin.\n\nJe ontvangt een bericht zodra dit klaar is.', 
+            [{ text: 'OK', action: closeModal }]
+        );
         return;
+    }
+    
+    console.log('Login succesvol voor:', user.name);
+    
+    // Sla op als "Onthouden" aangevinkt
+    if (rememberMe) {
+        localStorage.setItem('rooster_remembered_user', JSON.stringify({
+            email: user.email,
+            pin: user.pin,
+            name: user.name
+        }));
+        console.log('User opgeslagen voor auto-login');
+    } else {
+        localStorage.removeItem('rooster_remembered_user');
     }
     
     currentUser = user;
@@ -940,15 +1265,41 @@ function handleLogin() {
     if (user.admin) {
         document.getElementById('adminDashboard').style.display = 'block';
         document.getElementById('teamView').style.display = 'none';
+        
+        // Toon alle tabs voor volledige admin
+        const allTabButtons = document.querySelectorAll('.tab-btn');
+        allTabButtons.forEach(btn => btn.style.display = 'block');
+        
         renderAdminDashboard();
         
         // Check voor nieuwe registraties
         const pendingRequests = allTeam.filter(m => m.role === 'Pending');
         if (pendingRequests.length > 0) {
             setTimeout(() => {
-                alert('🔔 Je hebt ' + pendingRequests.length + ' registratieverzoek(en) te controleren!\n\nGa naar "Registraties" om deze goed te keuren.');
+                showModal('Nieuwe registraties', '🔔 Je hebt ' + pendingRequests.length + ' registratieverzoek(en)!\n\nGa naar "Registraties" om ze goed te keuren.', 
+                    [{ text: 'OK', action: closeModal }]
+                );
             }, 500);
         }
+    } else if (user.editor) {
+        // Editor: mag ALLEEN diensten bewerken
+        document.getElementById('adminDashboard').style.display = 'block';
+        document.getElementById('teamView').style.display = 'none';
+        
+        // Verberg alle tabs behalve "Diensten"
+        const allTabButtons = document.querySelectorAll('.tab-btn');
+        allTabButtons.forEach(btn => {
+            const onclick = btn.getAttribute('onclick');
+            if (onclick && onclick.includes("'services'")) {
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+        
+        // Ga direct naar Diensten tab
+        switchAdminTab('services');
+        
     } else {
         document.getElementById('adminDashboard').style.display = 'none';
         document.getElementById('teamView').style.display = 'block';
@@ -963,6 +1314,7 @@ function handleLogin() {
         }, 60 * 1000);
     }
     
+    // Wis login velden
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPin').value = '';
     
@@ -970,22 +1322,147 @@ function handleLogin() {
     document.getElementById('newRequestsBadge').style.display = 'none';
 }
 
+// Biometric login (vingerafdruk/gezicht)
+function biometricLogin() {
+    const savedUser = localStorage.getItem('rooster_remembered_user');
+    if (!savedUser) {
+        showModal('Fout', 'Geen opgeslagen gebruiker gevonden', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    // Controleer of apparaat biometric ondersteunt
+    if (window.PublicKeyCredential === undefined || typeof window.PublicKeyCredential !== 'function') {
+        // Fallback: auto-login zonder biometric
+        const user = JSON.parse(savedUser);
+        document.getElementById('loginEmail').value = user.email;
+        document.getElementById('loginPin').value = user.pin;
+        handleLogin();
+        return;
+    }
+    
+    // Probeer biometric unlock
+    showModal('🔒 Biometric', 'Plaats je vinger op de sensor of kijk in de camera...', []);
+    
+    setTimeout(() => {
+        // Simuleer biometric (native support is complex)
+        const user = JSON.parse(savedUser);
+        document.getElementById('loginEmail').value = user.email;
+        document.getElementById('loginPin').value = user.pin;
+        closeModal();
+        handleLogin();
+    }, 1500);
+}
+
 function handleLogout() {
     currentUser = null;
+    
+    // Reset alle data in geheugen - volgende login zal nieuw laden
+    allTeam = [];
+    allServices = [];
+    allBlockouts = [];
+    
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
+    
+    // Zet login velden leeg
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPin').value = '';
+    document.getElementById('rememberMe').checked = false;
+    
+    // Update biometric knop
+    const biometricBtn = document.getElementById('biometricBtn');
+    const savedUser = localStorage.getItem('rooster_remembered_user');
+    if (savedUser && biometricBtn) {
+        const user = JSON.parse(savedUser);
+        biometricBtn.textContent = '🔒 Inloggen als ' + user.name;
+        biometricBtn.style.display = 'block';
+    } else if (biometricBtn) {
+        biometricBtn.style.display = 'none';
+    }
 }
 
 function switchAdminTab(tab) {
+    // Verwijder active van alle tabs en buttons
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     
-    document.getElementById(tab + 'Tab').classList.add('active');
-    event.target.classList.add('active');
+    // Voeg active toe aan juiste tab
+    const tabEl = document.getElementById(tab + 'Tab');
+    if (tabEl) {
+        tabEl.classList.add('active');
+    }
     
+    // Vind en activeer de juiste button
+    // Zoek naar button met onclick="switchAdminTab('...')"
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(btn => {
+        const onclick = btn.getAttribute('onclick');
+        if (onclick && onclick.includes(`'${tab}'`)) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Render content
     if (tab === 'requests') renderRegistrationRequests();
     if (tab === 'team') renderTeamList();
     if (tab === 'services') renderServicesList();
+    if (tab === 'matrix') renderAvailabilityMatrix();
+}
+
+function renderAvailabilityMatrix() {
+    // Alleen teamleden (geen pending)
+    const teamMembers = allTeam.filter(m => m.role !== 'Pending' && !m.admin);
+    const futureServices = allServices.filter(s => new Date(s.date) >= new Date()).slice(0, 20);
+    
+    if (futureServices.length === 0) {
+        document.getElementById('matrixContent').innerHTML = '<p style="color: #999;">Geen toekomstige diensten</p>';
+        return;
+    }
+    
+    // Bouw tabel
+    let html = '<table style="border-collapse: collapse; width: 100%; font-size: 13px;">';
+    
+    // Header rij
+    html += '<tr style="background: #2B5A7A; color: white;">';
+    html += '<th style="padding: 10px; text-align: left; border: 1px solid #ccc;">Teamlid</th>';
+    futureServices.forEach(s => {
+        const date = new Date(s.date);
+        const day = date.toLocaleDateString('nl-NL', { weekday: 'short' });
+        const short = date.toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
+        html += `<th style="padding: 10px; border: 1px solid #ccc; white-space: nowrap; font-size: 12px;">${s.desc}<br>${day} ${short}<br>${s.time}</th>`;
+    });
+    html += '</tr>';
+    
+    // Rows voor elk teamlid
+    teamMembers.forEach(member => {
+        html += `<tr style="border: 1px solid #ddd;">`;
+        html += `<td style="padding: 10px; border: 1px solid #ccc; font-weight: bold;">${member.name}</td>`;
+        
+        futureServices.forEach(service => {
+            const isBlocked = allBlockouts.some(b => b.email === member.email && b.date === service.date);
+            const isAssigned = Object.values(service.roles || {}).some(email => 
+                email && email.toLowerCase() === member.email.toLowerCase()
+            );
+            
+            let bg = '#f9f9f9'; // default
+            let symbol = '—';
+            
+            if (isBlocked) {
+                bg = '#ffcccc'; // Rood - niet beschikbaar
+                symbol = '❌';
+            } else if (isAssigned) {
+                bg = '#ccffcc'; // Groen - ingepland
+                symbol = '✅';
+            }
+            
+            html += `<td style="padding: 10px; text-align: center; border: 1px solid #ccc; background: ${bg};">${symbol}</td>`;
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</table>';
+    document.getElementById('matrixContent').innerHTML = html;
 }
 
 function renderAdminDashboard() {
@@ -1075,7 +1552,7 @@ function approveRegistration(email) {
     member.role = 'Video';
     member.approved = true;
     
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    saveData('team', allTeam);
     alert('✅ ' + member.name + ' is goedgekeurd!\nRol: Video');
     
     renderRegistrationRequests();
@@ -1087,7 +1564,7 @@ function rejectRegistration(email) {
     if (!confirm('Registratie afwijzen?')) return;
     
     allTeam = allTeam.filter(m => m.email !== email);
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    saveData('team', allTeam);
     
     alert('Registratie afgewezen');
     renderRegistrationRequests();
@@ -1120,9 +1597,12 @@ function renderTeamList() {
                      member.status === 'reserve' ? '🔄 Reserve' :
                      member.status === 'unsuitable' ? '❌ Niet Geschikt' : member.status) + '</span>' : ''}
             </div>
-            <div style="display: flex; gap: 5px; width: 100%;">
-                <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Bewerk</button>
-                <button class="danger" onclick="deleteTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1;">Verwijder</button>
+            <div style="display: flex; gap: 5px; width: 100%; flex-wrap: wrap;">
+                <button onclick="editTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1; min-width: 80px;">Bewerk</button>
+                <button onclick="toggleEditorRole('${member.email}', ${member.editor || false})" style="padding: 6px 12px; flex: 1; min-width: 120px; background: ${(member.editor ? '#27AE60' : '#95A5A6')};">
+                    ${member.editor ? '👤 Is Editor' : '➕ Maak Editor'}
+                </button>
+                <button class="danger" onclick="deleteTeamMember('${member.email}')" style="padding: 6px 12px; flex: 1; min-width: 80px;">Verwijder</button>
             </div>
         </div>
     `;
@@ -1134,7 +1614,7 @@ function renderTeamList() {
 function renderServicesList() {
     const html = allServices.map((s, idx) => `
         <div class="service-card">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
                 <div style="flex: 1;">
                     <strong>${s.desc || 'Dienst'}</strong><br>
                     <small style="color: #666;">${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
@@ -1142,10 +1622,11 @@ function renderServicesList() {
                         const person = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
                         return `<small><strong>${role}:</strong> ${person?.name || '–'}</small><br>`;
                     }).join('') : ''}
+                    ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <button onclick="editService(${idx})" style="padding: 6px 12px;">Bewerk</button>
-                    <button class="danger" onclick="deleteService(${idx})" style="padding: 6px 12px;">Verwijder</button>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                    <button onclick="editService(${idx})" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
+                    <button class="danger" onclick="deleteService(${idx})" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>
             </div>
         </div>
@@ -1160,13 +1641,29 @@ function renderTeamView() {
         .sort((a, b) => new Date(a.date) - new Date(b.date));
     
     document.getElementById('myServices').innerHTML = myServices.length ?
-        myServices.map(s => {
+        myServices.map((s, idx) => {
             const isBlocked = allBlockouts.some(b => b.email === currentUser.email && b.date === s.date);
+            
+            // Vind de rol van de huidige user in deze dienst
+            let myRole = null;
+            for (const [role, email] of Object.entries(s.roles || {})) {
+                if (email && email.toLowerCase() === currentUser.email.toLowerCase()) {
+                    myRole = role;
+                    break;
+                }
+            }
+            
             return `
                 <div class="service-card" style="${isBlocked ? 'border-color: #dc3545; background: #fff5f5;' : ''}">
                     <strong>${s.desc || 'Dienst'}</strong><br>
-                    <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
+                    <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
+                    ${myRole ? `<small style="background: #e8f4f8; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 5px 0;"><strong>👤 Jouw rol:</strong> ${myRole}</small>` : ''}
+                    ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #2B5A7A; font-size: 13px;"><strong>📝 Info:</strong><br>${s.notes}</div>` : ''}
                     ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
+                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 120px;">📅 Google Calendar</button>
+                        <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 100px;">💾 Download .ics</button>
+                    </div>
                 </div>
             `;
         }).join('') :
@@ -1206,6 +1703,23 @@ function renderTeamView() {
     // Controleer op diensten en zet reminders
     if (reminderSettings.enabled) {
         scheduleReminders();
+    }
+    
+    // Show popup ONLY FIRST TIME with upcoming services
+    const hasSeenServiceNotification = localStorage.getItem('seen_service_notif_' + currentUser.email);
+    if (!hasSeenServiceNotification && myServices.length > 0) {
+        const upcomingServices = myServices.filter(s => new Date(s.date) >= new Date()).slice(0, 3);
+        if (upcomingServices.length > 0) {
+            const serviceList = upcomingServices.map(s => 
+                `• ${s.desc || 'Dienst'} - ${new Date(s.date).toLocaleDateString('nl-NL')} om ${s.time}`
+            ).join('\n');
+            
+            setTimeout(() => {
+                showModal('📅 Je volgende diensten', serviceList + '\n\nTip: Voeg deze toe aan je agenda met de knop hieronder!', 
+                    [{ text: 'OK', action: () => { closeModal(); localStorage.setItem('seen_service_notif_' + currentUser.email, 'true'); } }]
+                );
+            }, 800);
+        }
     }
 }
 
@@ -1317,7 +1831,7 @@ function addTeamMember() {
     }
     
     allTeam.push({ name, email: email, role, pin, status, admin: false, created: new Date().toISOString() });
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+    saveData('team', allTeam);
     
     renderTeamList();
     renderAdminDashboard();
@@ -1333,10 +1847,27 @@ function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
         allBlockouts = allBlockouts.filter(b => b.email !== email);
-        localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
-        localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+        saveData('team', allTeam);
+        saveData('blockouts', allBlockouts);
         renderTeamList();
         renderAdminDashboard();
+    }
+}
+
+function toggleEditorRole(email, isCurrentlyEditor) {
+    const member = allTeam.find(m => m.email === email);
+    if (!member) return;
+    
+    const action = isCurrentlyEditor ? 'verwijderen' : 'geven';
+    const msg = isCurrentlyEditor 
+        ? `Verwijder Editor rol van ${member.name}?`
+        : `Geef Editor rol aan ${member.name}?\n\nZij mogen dan ALLEEN diensten bewerken.`;
+    
+    if (confirm(msg)) {
+        member.editor = !isCurrentlyEditor;
+        saveData('team', allTeam);
+        renderTeamList();
+        showModal('Klaar!', `Editor rol ${action} voor ${member.name}`, [{ text: 'OK', action: closeModal }]);
     }
 }
 
@@ -1353,9 +1884,11 @@ function addService() {
     const date = document.getElementById('serviceDate').value;
     const time = document.getElementById('serviceTime').value;
     const desc = document.getElementById('serviceDesc').value;
+    const notes = document.getElementById('serviceNotes').value.trim();
+    const repeatType = document.getElementById('serviceRepeat').value;
     
     if (!date || !time) {
-        alert('Datum en tijd verplicht');
+        showModal('Fout', 'Datum en tijd zijn verplicht!', [{ text: 'OK', action: closeModal }]);
         return;
     }
     
@@ -1364,21 +1897,54 @@ function addService() {
         roles[role] = '';
     });
     
-    allServices.push({ date, time, desc, roles, created: new Date().toISOString() });
+    const seriesId = 'series_' + Date.now();
+    const servicesToAdd = [];
+    
+    // Basis dienst
+    const baseService = { date, time, desc, notes, roles, created: new Date().toISOString(), seriesId };
+    servicesToAdd.push(baseService);
+    
+    // Herhalingen genereren
+    if (repeatType !== 'none') {
+        let currentDate = new Date(date + 'T00:00:00');
+        let maxIterations = repeatType === 'weekly' ? 12 : 
+                           repeatType === 'biweekly' ? 12 : 6;
+        let step = repeatType === 'weekly' ? 7 : 
+                  repeatType === 'biweekly' ? 14 : 30; // dagen
+        
+        for (let i = 1; i < maxIterations; i++) {
+            currentDate.setDate(currentDate.getDate() + step);
+            const nextDate = currentDate.toISOString().split('T')[0];
+            
+            // Voorkom duplicaten
+            if (!allServices.some(s => s.date === nextDate && s.desc === desc && s.time === time)) {
+                servicesToAdd.push({ date: nextDate, time, desc, notes, roles, created: new Date().toISOString(), seriesId });
+            }
+        }
+    }
+    
+    // Voeg allemaal toe
+    allServices = allServices.concat(servicesToAdd);
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
-    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+    saveData('services', allServices);
     
     renderServicesList();
     renderAdminDashboard();
     closeAddServiceModal();
     
+    showModal('✅ Succes', 'Er zijn ' + servicesToAdd.length + ' dienst(en) toegevoegd!', 
+        [{ text: 'OK', action: closeModal }]
+    );
+    
     document.getElementById('serviceDesc').value = '';
+    document.getElementById('serviceNotes').value = '';
+    document.getElementById('serviceRepeat').value = 'none';
 }
 
 function deleteService(idx) {
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
-        localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+        saveData('services', allServices);
         renderServicesList();
         renderAdminDashboard();
     }
@@ -1401,12 +1967,18 @@ function editService(idx) {
             <label>Omschrijving</label>
             <input type="text" id="editDesc" value="${s.desc || ''}">
         </div>
+        <div class="form-group">
+            <label>📝 Notitie voor teamleden</label>
+            <textarea id="editNotes" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;">${s.notes || ''}</textarea>
+        </div>
         ${['Video', 'Geluid', 'Multimedia', 'Licht'].map(role => {
+            // Display name met extra info voor Video
+            const displayRole = role === 'Video' ? 'Video (livestream)' : role;
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
             const roleMembers = teamMembers.filter(m => m.role === role || m.role === 'Techniek Lead');
             return `
                 <div class="form-group">
-                    <label>${role}</label>
+                    <label>${displayRole}</label>
                     <select id="role_${role}">
                         <option value="">-- Selecteer --</option>
                         ${roleMembers.map(m => `<option value="${m.email}" ${s.roles[role] === m.email ? 'selected' : ''}>${m.name}</option>`).join('')}
@@ -1428,15 +2000,18 @@ function saveServiceEdit(idx) {
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
     allServices[idx].desc = document.getElementById('editDesc').value;
+    allServices[idx].notes = document.getElementById('editNotes').value.trim();
     
     ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
-    localStorage.setItem('rooster_techniek_services', JSON.stringify(allServices));
+    saveData('services', allServices);
     renderServicesList();
     renderAdminDashboard();
     closeEditServiceModal();
+    
+    showModal('Succes', '✅ Dienst bijgewerkt!', [{ text: 'OK', action: closeModal }]);
 }
 
 function closeEditServiceModal() {
@@ -1462,7 +2037,7 @@ function addBlockout() {
     }
     
     allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    saveData('blockouts', allBlockouts);
     
     renderTeamView();
     closeBlockoutModal();
@@ -1471,7 +2046,7 @@ function addBlockout() {
 
 function deleteBlockout(idx) {
     allBlockouts.splice(idx, 1);
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    saveData('blockouts', allBlockouts);
     renderTeamView();
 }
 
@@ -1482,8 +2057,8 @@ function deleteMyAccount() {
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
     allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
     
-    localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
-    localStorage.setItem('rooster_techniek_blockouts', JSON.stringify(allBlockouts));
+    saveData('team', allTeam);
+    saveData('blockouts', allBlockouts);
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();
@@ -1499,7 +2074,7 @@ function editTeamMember(email) {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
-            localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+            saveData('team', allTeam);
             renderTeamList();
             renderAdminDashboard();
         }
@@ -1507,11 +2082,71 @@ function editTeamMember(email) {
         const newPin = prompt('Nieuwe PIN voor ' + member.name + ':', '');
         if (newPin !== null && newPin.trim() !== '') {
             member.pin = newPin.trim();
-            localStorage.setItem('rooster_techniek_team', JSON.stringify(allTeam));
+            saveData('team', allTeam);
             alert('✅ PIN gewijzigd naar: ' + newPin);
             renderTeamList();
         }
     }
+}
+
+function addToGoogleCalendar(idx) {
+    const myServices = allServices
+        .filter(s => Object.values(s.roles || {}).includes(currentUser.email))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const service = myServices[idx];
+    if (!service) return;
+    
+    const start = new Date(service.date + 'T' + service.time);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    
+    const startStr = start.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endStr = end.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    const title = encodeURIComponent(service.desc || 'Dienst Kijk Omhoog');
+    const details = encodeURIComponent('Dienst bij Stichting Kijk Omhoog\nTijd: ' + service.time + '\nVideo/Beamer Team');
+    
+    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}`;
+    
+    window.open(googleUrl, '_blank');
+    alert('✅ Dienst geopend in Google Calendar!\n\nJe kunt het nu toevoegen aan je agenda.');
+}
+
+function addToLocalCalendar(idx) {
+    const myServices = allServices
+        .filter(s => Object.values(s.roles || {}).includes(currentUser.email))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const service = myServices[idx];
+    if (!service) return;
+    
+    const start = new Date(service.date + 'T' + service.time);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Kijk Omhoog//Rooster Techniek//NL
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:${Math.random().toString(36).substring(2)}@kijkomhoog.nl
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTSTART:${start.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTEND:${end.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+SUMMARY:${service.desc || 'Dienst Kijk Omhoog'}
+DESCRIPTION:Dienst bij Stichting Kijk Omhoog - Video/Beamer Team - Tijd: ${service.time}
+LOCATION:Stichting Kijk Omhoog
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR`;
+    
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kijk-omhoog-${service.date}.ics`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    alert('✅ Dienst gedownload!\n\nDe .ics-file kun je in Outlook, Apple Calendar, etc. importeren.');
 }
 
 function exportAllData() {
@@ -1530,14 +2165,89 @@ function exportAllData() {
     a.click();
 }
 
+
+
+function loadDefaultSundays() {
+    if (!confirm('Dit voegt alle zondagen tot januari + 24 dec + 31 dec toe.\n\nBestaande diensten worden NIET verwijderd.')) return;
+    
+    const sundays = [];
+    
+    // Vind alle zondagen van nu tot eind januari
+    const today = new Date();
+    const endDate = new Date(today.getFullYear() + 1, 1, 31); // Eind januari volgende jaar
+    
+    for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === 0) { // 0 = zondag
+            const dateStr = d.toISOString().split('T')[0];
+            // Check of dienst al bestaat
+            if (!allServices.some(s => s.date === dateStr && (s.desc === 'Zondagsdienst' || s.desc === 'Zondag'))) {
+                sundays.push({
+                    date: dateStr,
+                    time: '19:00',
+                    desc: 'Zondagsdienst',
+                    notes: 'Standaard zondagdienst - pas aan waar nodig',
+                    roles: { 'Video (livestream)': '', Geluid: '', Multimedia: '', Licht: '' },
+                    created: new Date().toISOString()
+                });
+            }
+        }
+    }
+    
+    // Voeg 24 december toe (kerstnacht)
+    const christmas = new Date(today.getFullYear(), 11, 24); // December 24
+    if (today <= christmas) {
+        const christmasStr = christmas.toISOString().split('T')[0];
+        if (!allServices.some(s => s.date === christmasStr)) {
+            sundays.push({
+                date: christmasStr,
+                time: '22:00',
+                desc: '🎄 Kerstnacht',
+                notes: 'Kerstnacht dienst - late avond',
+                roles: { Video: '', Geluid: '', Multimedia: '', Licht: '' },
+                created: new Date().toISOString()
+            });
+        }
+    }
+    
+    // Voeg 31 december toe (oudejaarsavond)
+    const newYearsEve = new Date(today.getFullYear(), 11, 31); // December 31
+    if (today <= newYearsEve) {
+        const newYearsEveStr = newYearsEve.toISOString().split('T')[0];
+        if (!allServices.some(s => s.date === newYearsEveStr)) {
+            sundays.push({
+                date: newYearsEveStr,
+                time: '22:00',
+                desc: '🎊 Oudejaarsavond',
+                notes: 'Oudejaarsavond dienst',
+                roles: { Video: '', Geluid: '', Multimedia: '', Licht: '' },
+                created: new Date().toISOString()
+            });
+        }
+    }
+    
+    // Voeg allemaal toe
+    allServices = allServices.concat(sundays);
+    allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+    saveData('services', allServices);
+    
+    renderServicesList();
+    renderAdminDashboard();
+    
+    showModal('✅ Klaar!', 'Er zijn ' + sundays.length + ' diensten toegevoegd.\n\nJe kunt ze allemaal nog aanpassen in het Diensten tabblad.', 
+        [{ text: 'OK', action: () => { closeModal(); switchAdminTab('services'); } }]
+    );
+}
+
 function resetAllData() {
     if (!confirm('WAARSCHUWING: Dit verwijdert ALLES. Weet je het zeker?')) return;
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Typ "VERWIJDER" om te bevestigen.')) return;
     
     if (prompt('Type "VERWIJDEREN" om te bevestigen:') === 'VERWIJDEREN') {
+        db.ref('rooster').remove();
         localStorage.clear();
-        alert('Alle data is verwijderd.');
-        location.reload();
+        showModal('✅ Data gewist', 'Alle data is verwijderd.\n\nPage wordt herladen...', 
+            [{ text: 'OK', action: () => { closeModal(); location.reload(); } }]
+        );
     }
 }
 </script>

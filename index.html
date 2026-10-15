@@ -698,7 +698,7 @@
             <input type="date" id="blockoutDate">
         </div>
         <div class="form-group">
-            <label>Reden (optioneel)</label>
+            <label>Reden van afwezigheid (verplicht)</label>
             <input type="text" id="blockoutReason" placeholder="bijv. Vakantie, ziek">
         </div>
         <div class="modal-buttons">
@@ -791,6 +791,22 @@ function toArray(val) {
 function refreshAfterRemoteChange() {
     if (!dataReady) return;
     checkNewRegistrations();
+    
+    // Rechten van de ingelogde gebruiker actueel houden
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        const fresh = allTeam.find(m => m.email && m.email.toLowerCase() === currentUser.email.toLowerCase());
+        if (!fresh || fresh.role === 'Pending') {
+            handleLogout();
+            return;
+        }
+        const changed = !!fresh.admin !== !!currentUser.admin ||
+                        !!fresh.editor !== !!currentUser.editor ||
+                        fresh.role !== currentUser.role;
+        if (changed) {
+            enterApp(fresh);
+            return;
+        }
+    }
     if (typeof currentUser !== 'undefined' && currentUser) {
         if (currentUser.admin) {
             renderAdminDashboard();
@@ -835,6 +851,11 @@ Object.keys(DATA_PATHS).forEach(key => {
         if (!dataReady && Object.values(loadedKeys).every(Boolean)) {
             dataReady = true;
             console.log('✓ Data geladen uit Firebase');
+            const savedEmail = sessionStorage.getItem('rooster_session_email');
+            if (savedEmail) {
+                const u = allTeam.find(m => m.email && m.email.toLowerCase() === savedEmail.toLowerCase());
+                if (u && u.role !== 'Pending') enterApp(u);
+            }
         }
         refreshAfterRemoteChange();
     }, err => {
@@ -1221,6 +1242,76 @@ function forgetThisDevice() {
     );
 }
 
+// Toont het juiste scherm voor deze gebruiker (admin / editor / teamlid)
+function enterApp(user) {
+    sessionStorage.setItem('rooster_session_email', user.email);
+    // Alle tabs eerst weer tonen; editor-regel verbergt daarna de rest
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.style.display = 'block');
+    currentUser = user;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminSetup').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    if (user.admin) {
+        document.getElementById('adminDashboard').style.display = 'block';
+        document.getElementById('teamView').style.display = 'none';
+        
+        // Toon alle tabs voor volledige admin
+        const allTabButtons = document.querySelectorAll('.tab-btn');
+        allTabButtons.forEach(btn => btn.style.display = 'block');
+        
+        renderAdminDashboard();
+        
+        // Check voor nieuwe registraties
+        const pendingRequests = allTeam.filter(m => m.role === 'Pending');
+        if (pendingRequests.length > 0) {
+            setTimeout(() => {
+                showModal('Nieuwe registraties', '🔔 Je hebt ' + pendingRequests.length + ' registratieverzoek(en)!\n\nGa naar "Registraties" om ze goed te keuren.', 
+                    [{ text: 'OK', action: closeModal }]
+                );
+            }, 500);
+        }
+    } else if (user.editor) {
+        // Editor: mag ALLEEN diensten bewerken
+        document.getElementById('adminDashboard').style.display = 'block';
+        document.getElementById('teamView').style.display = 'none';
+        
+        // Verberg alle tabs behalve "Diensten"
+        const allTabButtons = document.querySelectorAll('.tab-btn');
+        allTabButtons.forEach(btn => {
+            const onclick = btn.getAttribute('onclick');
+            if (onclick && onclick.includes("'services'")) {
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+        
+        // Ga direct naar Diensten tab
+        switchAdminTab('services');
+        
+    } else {
+        document.getElementById('adminDashboard').style.display = 'none';
+        document.getElementById('teamView').style.display = 'block';
+        renderTeamView();
+        
+        // Check reminders elke minuut
+        setInterval(() => {
+            const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false}');
+            if (reminderSettings.enabled) {
+                scheduleReminders();
+            }
+        }, 60 * 1000);
+    }
+    
+    // Wis login velden
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPin').value = '';
+    
+    // Verberg badge
+    document.getElementById('newRequestsBadge').style.display = 'none';
+}
+
 async function handleLogin() {
     // Haal RUWE waarden op
     const emailRaw = document.getElementById('loginEmail');
@@ -1300,69 +1391,7 @@ async function handleLogin() {
         localStorage.removeItem('rooster_remembered_user');
     }
     
-    currentUser = user;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('adminSetup').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    
-    if (user.admin) {
-        document.getElementById('adminDashboard').style.display = 'block';
-        document.getElementById('teamView').style.display = 'none';
-        
-        // Toon alle tabs voor volledige admin
-        const allTabButtons = document.querySelectorAll('.tab-btn');
-        allTabButtons.forEach(btn => btn.style.display = 'block');
-        
-        renderAdminDashboard();
-        
-        // Check voor nieuwe registraties
-        const pendingRequests = allTeam.filter(m => m.role === 'Pending');
-        if (pendingRequests.length > 0) {
-            setTimeout(() => {
-                showModal('Nieuwe registraties', '🔔 Je hebt ' + pendingRequests.length + ' registratieverzoek(en)!\n\nGa naar "Registraties" om ze goed te keuren.', 
-                    [{ text: 'OK', action: closeModal }]
-                );
-            }, 500);
-        }
-    } else if (user.editor) {
-        // Editor: mag ALLEEN diensten bewerken
-        document.getElementById('adminDashboard').style.display = 'block';
-        document.getElementById('teamView').style.display = 'none';
-        
-        // Verberg alle tabs behalve "Diensten"
-        const allTabButtons = document.querySelectorAll('.tab-btn');
-        allTabButtons.forEach(btn => {
-            const onclick = btn.getAttribute('onclick');
-            if (onclick && onclick.includes("'services'")) {
-                btn.style.display = 'block';
-            } else {
-                btn.style.display = 'none';
-            }
-        });
-        
-        // Ga direct naar Diensten tab
-        switchAdminTab('services');
-        
-    } else {
-        document.getElementById('adminDashboard').style.display = 'none';
-        document.getElementById('teamView').style.display = 'block';
-        renderTeamView();
-        
-        // Check reminders elke minuut
-        setInterval(() => {
-            const reminderSettings = JSON.parse(localStorage.getItem('reminder_' + currentUser.email) || '{"enabled": false}');
-            if (reminderSettings.enabled) {
-                scheduleReminders();
-            }
-        }, 60 * 1000);
-    }
-    
-    // Wis login velden
-    document.getElementById('loginEmail').value = '';
-    document.getElementById('loginPin').value = '';
-    
-    // Verberg badge
-    document.getElementById('newRequestsBadge').style.display = 'none';
+    enterApp(user);
 }
 
 // Biometric login (vingerafdruk/gezicht)
@@ -1397,6 +1426,7 @@ function biometricLogin() {
 }
 
 function handleLogout() {
+    sessionStorage.removeItem('rooster_session_email');
     currentUser = null;
     
     // Data blijft in geheugen; de live-verbinding houdt het actueel
@@ -2143,7 +2173,11 @@ function closeBlockoutModal() {
 
 function addBlockout() {
     const date = document.getElementById('blockoutDate').value;
-    const reason = document.getElementById('blockoutReason').value;
+    const reason = document.getElementById('blockoutReason').value.trim();
+    if (!reason) {
+        showModal('Let op', 'Vul een reden van afwezigheid in.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
     
     if (!date) {
         alert('Datum verplicht');
@@ -2187,12 +2221,21 @@ function editTeamMember(email) {
     const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     
     // Menu met opties
-    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten', '1');
+    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Rol instellen', '1');
     
     if (options === '1') {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
         if (newStatus !== null) {
             member.status = newStatus;
+            saveData('team', allTeam);
+            renderTeamList();
+            renderAdminDashboard();
+        }
+    } else if (options === '3') {
+        const choice = prompt(member.name + ' - kies een rol:\n1 = Video (livestream)\n2 = Geluid\n3 = Multimedia\n4 = Licht\n5 = Techniek Lead\n6 = Geen rol', '');
+        const map = { '1': 'Video', '2': 'Geluid', '3': 'Multimedia', '4': 'Licht', '5': 'Techniek Lead', '6': 'Geen rol' };
+        if (choice && map[choice.trim()]) {
+            member.role = map[choice.trim()];
             saveData('team', allTeam);
             renderTeamList();
             renderAdminDashboard();

@@ -1584,6 +1584,52 @@ function renderRegistrationRequests() {
     document.getElementById('registrationRequests').innerHTML = html;
 }
 
+// ===== MAIL HULPFUNCTIES (opent je eigen e-mailprogramma) =====
+function mailLink(to, subject, body) {
+    return 'mailto:' + encodeURIComponent(to) +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+}
+
+function firstNameOf(fullName) {
+    return (fullName || '').split(' ')[0];
+}
+
+function formatDutchDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function welcomeMailFor(member) {
+    const voornaam = firstNameOf(member.name);
+    const subject = 'Welkom in het techniekteam, ' + voornaam + '!';
+    const body =
+        'Beste ' + voornaam + ',\n\n' +
+        'Wat fijn dat je bent goedgekeurd! Welkom in het techniekteam van Kijk Omhoog.\n\n' +
+        'Je kunt nu inloggen in de Rooster Techniek app. Daar zie je je diensten en geef je door wanneer je niet beschikbaar bent.\n\n' +
+        'We kijken uit naar de samenwerking!\n\n' +
+        'Met vriendelijke groet,\n' +
+        'Remko Meijer';
+    return mailLink(member.email, subject, body);
+}
+
+function serviceMailFor(member, service, roleLabel) {
+    const voornaam = firstNameOf(member.name);
+    const dag = formatDutchDate(service.date);
+    const subject = 'Je bent ingedeeld op ' + dag;
+    let body =
+        'Beste ' + voornaam + ',\n\n' +
+        'Je bent ingedeeld voor ' + roleLabel + ' op ' + dag + ' om ' + service.time + ' uur';
+    if (service.desc) body += ' (' + service.desc + ')';
+    body += '.\n\n';
+    if (service.notes) body += 'Let op: ' + service.notes + '\n\n';
+    body += 'Kun je niet? Geef dit dan zo snel mogelijk door in de app, zodat we iemand anders kunnen zoeken.\n\n' +
+        'Tot dan!\n\n' +
+        'Met vriendelijke groet,\n' +
+        'Remko Meijer';
+    return mailLink(member.email, subject, body);
+}
+
 function approveRegistration(email) {
     const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     if (!member) return;
@@ -1593,7 +1639,10 @@ function approveRegistration(email) {
     member.approved = true;
     
     saveData('team', allTeam);
-    alert('✅ ' + member.name + ' is goedgekeurd!\nGeen rol toegekend. Stel de rol in via Team → Bewerk.');
+    showModal('✅ Goedgekeurd', member.name + ' is goedgekeurd. Wil je een welkomstmail sturen?\n\nJe kunt de rol later instellen via Team → Bewerk.', [
+        { text: '✉️ Welkomstmail sturen', action: () => { window.location.href = welcomeMailFor(member); closeModal(); } },
+        { text: 'Later', action: closeModal, style: 'padding: 10px 20px; background: #95A5A6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;' }
+    ]);
     
     renderRegistrationRequests();
     renderTeamList();
@@ -2040,6 +2089,7 @@ function editService(idx) {
 }
 
 function saveServiceEdit(idx) {
+    const oldRoles = Object.assign({}, allServices[idx].roles || {});
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
     allServices[idx].desc = document.getElementById('editDesc').value;
@@ -2054,7 +2104,28 @@ function saveServiceEdit(idx) {
     renderAdminDashboard();
     closeEditServiceModal();
     
-    showModal('Succes', '✅ Dienst bijgewerkt!', [{ text: 'OK', action: closeModal }]);
+    // Nieuw ingedeelde personen: mail aanbieden
+    const service = allServices[idx];
+    const buttons = [];
+    ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
+        const email = service.roles[role];
+        if (email && email !== oldRoles[role]) {
+            const member = allTeam.find(m => m.email === email);
+            if (member) {
+                const label = role === 'Video' ? 'Video (livestream)' : role;
+                buttons.push({
+                    text: '✉️ Mail ' + firstNameOf(member.name),
+                    action: () => { window.location.href = serviceMailFor(member, service, label); closeModal(); }
+                });
+            }
+        }
+    });
+    buttons.push({ text: 'Sluiten', action: closeModal, style: 'padding: 10px 20px; background: #95A5A6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;' });
+    
+    const message = buttons.length > 1
+        ? '✅ Dienst bijgewerkt!\n\nWil je de nieuw ingedeelde personen een mail sturen?'
+        : '✅ Dienst bijgewerkt!';
+    showModal('Succes', message, buttons);
 }
 
 function closeEditServiceModal() {

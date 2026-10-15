@@ -661,7 +661,7 @@
         </div>
         <div class="form-group">
             <label>📝 Notitie voor teamleden (bijv. tijd aanwezig zijn)</label>
-            <textarea id="serviceNotes" placeholder="bijv. Om 11:45 uur aanwezig zijn. Rood overhemd meenemen." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
+            <textarea id="serviceNotes" placeholder="bijv. Om 11:45 uur aanwezig zijn." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
         </div>
         <div class="form-group">
             <label>🔄 Herhalen?</label>
@@ -737,10 +737,41 @@ let allBlockouts = [];
 let dataReady = false;
 const loadedKeys = { team: false, services: false, blockouts: false };
 
-// Opslaan naar Firebase (iedereen ziet dit direct)
+// Laatst bekende serverstatus per lijst (om wijzigingen te bepalen)
+const lastSynced = { team: [], services: [], blockouts: [] };
+
+// Identiteit van een item (om items te herkennen zonder volgorde)
+const ITEM_KEY = {
+    team: m => m.email,
+    services: s => s.date + '|' + s.time,
+    blockouts: b => (b.email || '') + '|' + b.date
+};
+
+// Alleen je eigen wijzigingen naar de server sturen, samengevoegd met de actuele lijst
 function saveData(key, value) {
-    const clean = JSON.parse(JSON.stringify(value));
-    db.ref(DATA_PATHS[key]).set(clean).catch(err => {
+    const kf = ITEM_KEY[key];
+    const newList = JSON.parse(JSON.stringify(value));
+    const oldList = lastSynced[key] || [];
+
+    const oldMap = new Map(oldList.map(i => [kf(i), JSON.stringify(i)]));
+    const newKeys = new Set(newList.map(kf));
+    const removed = [...oldMap.keys()].filter(k => !newKeys.has(k));
+    const upserts = newList.filter(i => oldMap.get(kf(i)) !== JSON.stringify(i));
+
+    lastSynced[key] = newList;
+    if (removed.length === 0 && upserts.length === 0) return;
+
+    db.ref(DATA_PATHS[key]).transaction(current => {
+        let list = toArray(current);
+        list = list.filter(i => !removed.includes(kf(i)));
+        upserts.forEach(u => {
+            const idx = list.findIndex(i => kf(i) === kf(u));
+            if (idx >= 0) list[idx] = u;
+            else list.push(u);
+        });
+        list = dedupeList(key, list);
+        return list.length ? list : null;
+    }).catch(err => {
         console.error('Firebase opslaan mislukt:', err);
         showModal('Fout', '❌ Opslaan mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
     });
@@ -766,10 +797,31 @@ function refreshAfterRemoteChange() {
     }
 }
 
+// Verwijder dubbele items (zelfde dag/tijd, of zelfde persoon + dag)
+function dedupeList(key, arr) {
+    const seen = new Set();
+    return arr.filter(item => {
+        const id = key === 'services' ? (item.date + '|' + item.time)
+                 : key === 'blockouts' ? ((item.email || '') + '|' + item.date)
+                 : null;
+        if (id === null) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+    });
+}
+
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
-        const arr = toArray(snap.val());
+        let arr = toArray(snap.val());
+        const cleaned = dedupeList(key, arr);
+        if (cleaned.length !== arr.length) {
+            console.log('Dubbelen verwijderd in', key);
+            db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
+            arr = cleaned;
+        }
+        lastSynced[key] = arr;
         if (key === 'team') allTeam = arr;
         else if (key === 'services') allServices = arr;
         else allBlockouts = arr;
@@ -808,6 +860,7 @@ async function loadTeamFromServer() {
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
     const snap = await Promise.race([db.ref(DATA_PATHS.team).once('value'), timeout]);
     allTeam = toArray(snap.val());
+    lastSynced.team = JSON.parse(JSON.stringify(allTeam));
     return allTeam;
 }
 
@@ -1912,8 +1965,11 @@ function addService() {
     const servicesToAdd = [];
     
     // Basis dienst
-    const baseService = { date, time, desc, notes, roles, created: new Date().toISOString(), seriesId };
-    servicesToAdd.push(baseService);
+    const baseExists = allServices.some(s => s.date === date && s.time === time);
+    if (!baseExists) {
+        const baseService = { date, time, desc, notes, roles, created: new Date().toISOString(), seriesId };
+        servicesToAdd.push(baseService);
+    }
     
     // Herhalingen genereren
     if (repeatType !== 'none') {
@@ -1928,7 +1984,7 @@ function addService() {
             const nextDate = currentDate.toISOString().split('T')[0];
             
             // Voorkom duplicaten
-            if (!allServices.some(s => s.date === nextDate && s.desc === desc && s.time === time)) {
+            if (!allServices.some(s => s.date === nextDate && s.time === time)) {
                 servicesToAdd.push({ date: nextDate, time, desc, notes, roles, created: new Date().toISOString(), seriesId });
             }
         }
@@ -2044,6 +2100,11 @@ function addBlockout() {
     
     if (!date) {
         alert('Datum verplicht');
+        return;
+    }
+    
+    if (allBlockouts.some(b => b.email === currentUser.email && b.date === date)) {
+        showModal('Let op', 'Je hebt deze dag al als niet-beschikbaar ingesteld.', [{ text: 'OK', action: closeModal }]);
         return;
     }
     

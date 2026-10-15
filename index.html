@@ -803,12 +803,20 @@ function showRegistration() {
     document.getElementById('registrationScreen').style.display = 'flex';
 }
 
+// Haal de actuele teamlijst op van de server (voorkomt verouderde data)
+async function loadTeamFromServer() {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
+    const snap = await Promise.race([db.ref(DATA_PATHS.team).once('value'), timeout]);
+    allTeam = toArray(snap.val());
+    return allTeam;
+}
+
 function hideRegistration() {
     document.getElementById('registrationScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function submitRegistration() {
+async function submitRegistration() {
     const firstName = document.getElementById('regFirstName').value.trim();
     const lastName = document.getElementById('regLastName').value.trim();
     const email = document.getElementById('regEmail').value.trim().toLowerCase();
@@ -827,6 +835,18 @@ function submitRegistration() {
     }
     
     if (allTeam.some(m => m.email.toLowerCase() === email.toLowerCase())) {
+        showModal('Fout', 'Dit email adres is al in gebruik!', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    try {
+        await loadTeamFromServer();
+    } catch (err) {
+        showModal('Fout', '❌ Kan de server niet bereiken. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    
+    if (allTeam.some(m => m.email && m.email.toLowerCase() === email)) {
         showModal('Fout', 'Dit email adres is al in gebruik!', [{ text: 'OK', action: closeModal }]);
         return;
     }
@@ -1169,7 +1189,7 @@ function forgetThisDevice() {
     );
 }
 
-function handleLogin() {
+async function handleLogin() {
     // Haal RUWE waarden op
     const emailRaw = document.getElementById('loginEmail');
     const pinRaw = document.getElementById('loginPin');
@@ -1201,8 +1221,10 @@ function handleLogin() {
         return;
     }
     
-    if (!dataReady) {
-        showModal('Even geduld', '⏳ Gegevens worden geladen. Probeer het over een paar seconden opnieuw.', [{ text: 'OK', action: closeModal }]);
+    try {
+        await loadTeamFromServer();
+    } catch (err) {
+        showModal('Fout', '❌ Kan de server niet bereiken. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
         return;
     }
     

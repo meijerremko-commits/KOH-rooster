@@ -2097,7 +2097,14 @@ function editService(idx) {
             // Display name met extra info voor Video
             const displayRole = role === 'Video' ? 'Video (livestream)' : role;
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
-            const roleMembers = teamMembers.filter(m => m.role === role || m.role === 'Techniek Lead');
+            // Alle goedgekeurde leden tonen; leden met deze rol eerst
+            const roleMembers = teamMembers
+                .filter(m => m.role !== 'Pending')
+                .sort((a, b) => {
+                    const aMatch = (a.role === role || a.role === 'Techniek Lead') ? 0 : 1;
+                    const bMatch = (b.role === role || b.role === 'Techniek Lead') ? 0 : 1;
+                    return aMatch - bMatch || a.name.localeCompare(b.name);
+                });
             return `
                 <div class="form-group">
                     <label>${displayRole}</label>

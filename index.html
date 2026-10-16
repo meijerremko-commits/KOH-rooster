@@ -712,7 +712,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v25 - zichtbare versie';
+const APP_VERSION = 'v26 - ik kan niet knop';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1884,6 +1884,32 @@ function renderServicesList() {
     document.getElementById('servicesListAdmin').innerHTML = html || '<p style="color: #999;">Geen diensten</p>';
 }
 
+// Zet of haalt de eigen blokkering voor één dienst (één tik)
+function toggleMyAvailability(date) {
+    if (!currentUser) return;
+    const existing = allBlockouts.find(b => b.email === currentUser.email && b.date === date);
+    if (existing) {
+        removeBlockouts(b => b.email === currentUser.email && b.date === date);
+        renderTeamView();
+        return;
+    }
+    const reason = prompt('Reden van afwezigheid (verplicht):', '');
+    if (reason === null) return;
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+        showModal('Let op', 'Vul een reden van afwezigheid in.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const id = db.ref(DATA_PATHS.blockouts).push().key;
+    const item = { id, email: currentUser.email, date, reason: cleanReason, created: new Date().toISOString() };
+    allBlockouts.push(item);
+    db.ref(DATA_PATHS.blockouts + '/' + id).set(item).catch(err => {
+        console.error('Blokkering opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van je beschikbaarheid is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
+    renderTeamView();
+}
+
 function renderTeamView() {
     const myServices = allServices
         .filter(s => Object.values(s.roles || {}).includes(currentUser.email))
@@ -1909,6 +1935,11 @@ function renderTeamView() {
                     ${myRole ? `<small style="background: #e8f4f8; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 5px 0;"><strong>👤 Jouw rol:</strong> ${myRole}</small>` : ''}
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #2B5A7A; font-size: 13px;"><strong>📝 Info:</strong><br>${s.notes}</div>` : ''}
                     ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
+                    <div style="margin-top: 8px;">
+                        <button onclick="toggleMyAvailability('${s.date}')" style="width: 100%; padding: 10px; font-size: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; background: ${isBlocked ? '#27AE60' : '#E74C3C'};">
+                            ${isBlocked ? '✅ Ik kan wel' : '❌ Ik kan niet'}
+                        </button>
+                    </div>
                     <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 120px;">📅 Google Calendar</button>
                         <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 100px;">💾 Download .ics</button>

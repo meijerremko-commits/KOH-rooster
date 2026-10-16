@@ -511,7 +511,7 @@
 
         <!-- SERVICES -->
         <div id="servicesTab" class="tab-content">
-            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button> <button class="primary" onclick="openRosterPreview()" style="margin-bottom: 20px;">🎲 Automatisch inroosteren</button>
+            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button>
             <div id="servicesListAdmin"></div>
         </div>
 
@@ -754,10 +754,6 @@ function saveData(key, value) {
         showModal('Even geduld', '⏳ Gegevens worden nog geladen. Probeer het over een paar seconden opnieuw.', [{ text: 'OK', action: closeModal }]);
         return;
     }
-    if (key === 'services') {
-        saveServicesDiff(value);
-        return;
-    }
     const kf = ITEM_KEY[key];
     const newList = JSON.parse(JSON.stringify(value));
     const oldList = lastSynced[key] || [];
@@ -836,134 +832,15 @@ function dedupeList(key, arr) {
     });
 }
 
-// ===== BLOKKERINGEN: elk een eigen record met eigen ID =====
-// Leest de lijst in. Oud formaat (één grote lijst) wordt eenmalig omgezet.
-function readBlockouts(snap) {
-    const raw = snap.val() || {};
-    const keys = Object.keys(raw);
-    // Eerst de al correcte records, zodat die bij dubbelen voorrang krijgen
-    keys.sort((a, b) => {
-        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
-        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
-        return aOk - bOk;
-    });
-    const updates = {};
-    const list = [];
-    const seen = new Set();
-    keys.forEach(k => {
-        const item = raw[k];
-        if (!item || typeof item !== 'object') { updates[k] = null; return; }
-        const dupKey = (item.email || '') + '|' + item.date;
-        if (seen.has(dupKey)) { updates[k] = null; return; }
-        seen.add(dupKey);
-        if (item.id === k) { list.push(item); return; }
-        // Oud formaat: maak er een eigen record van
-        const newId = db.ref(DATA_PATHS.blockouts).push().key;
-        const migrated = Object.assign({}, item, { id: newId });
-        updates[k] = null;
-        updates[newId] = migrated;
-        list.push(migrated);
-    });
-    if (Object.keys(updates).length) {
-        console.log('Blokkeringen omgezet naar nieuw formaat');
-        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Omzetten mislukt:', err));
-    }
-    return list;
-}
-
-// Verwijdert alleen de blokkeringen die aan de voorwaarde voldoen
-function removeBlockouts(predicate) {
-    const toRemove = allBlockouts.filter(predicate);
-    const updates = {};
-    toRemove.forEach(b => { if (b.id) updates[b.id] = null; });
-    allBlockouts = allBlockouts.filter(b => !predicate(b));
-    if (Object.keys(updates).length) {
-        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Verwijderen mislukt:', err));
-    }
-}
-
-// ===== DIENSTEN: elk een eigen record met eigen ID =====
-// Sleutels in vaste volgorde, zodat we echte wijzigingen herkennen
-function canonical(obj) {
-    return JSON.stringify(obj, (k, v) => {
-        if (v && typeof v === 'object' && !Array.isArray(v)) {
-            return Object.keys(v).sort().reduce((acc, kk) => { acc[kk] = v[kk]; return acc; }, {});
-        }
-        return v;
-    });
-}
-
-// Leest diensten in. Oud formaat (één lijst) wordt eenmalig omgezet.
-function readServices(snap) {
-    const raw = snap.val() || {};
-    const keys = Object.keys(raw).sort((a, b) => {
-        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
-        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
-        return aOk - bOk;
-    });
-    const updates = {};
-    const list = [];
-    const seen = new Set();
-    keys.forEach(k => {
-        const item = raw[k];
-        if (!item || typeof item !== 'object') { updates[k] = null; return; }
-        const dupKey = item.date + '|' + item.time;
-        if (seen.has(dupKey)) { updates[k] = null; return; }
-        seen.add(dupKey);
-        if (item.id === k) { list.push(item); return; }
-        const newId = db.ref(DATA_PATHS.services).push().key;
-        const migrated = Object.assign({}, item, { id: newId });
-        updates[k] = null;
-        updates[newId] = migrated;
-        list.push(migrated);
-    });
-    if (Object.keys(updates).length) {
-        console.log('Diensten omgezet naar nieuw formaat');
-        db.ref(DATA_PATHS.services).update(updates).catch(err => console.error('Omzetten diensten mislukt:', err));
-    }
-    list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    return list;
-}
-
-// Schrijft alleen de diensten die echt zijn veranderd, elk als eigen record
-function saveServicesDiff(value) {
-    value.forEach(s => { if (!s.id) s.id = db.ref(DATA_PATHS.services).push().key; });
-    const list = JSON.parse(JSON.stringify(value));
-
-    const oldById = new Map((lastSynced.services || []).map(s => [s.id, canonical(s)]));
-    const newIds = new Set(list.map(s => s.id));
-    const updates = {};
-    oldById.forEach((_, id) => { if (!newIds.has(id)) updates[id] = null; });
-    list.forEach(s => { if (oldById.get(s.id) !== canonical(s)) updates[s.id] = s; });
-
-    lastSynced.services = list;
-    if (Object.keys(updates).length) {
-        db.ref(DATA_PATHS.services).update(updates).catch(err => {
-            console.error('Dienst opslaan mislukt:', err);
-            showModal('Fout', '❌ Opslaan van de dienst is mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
-        });
-    }
-}
-
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
-        let arr;
-        if (key === 'blockouts') {
-            arr = readBlockouts(snap);
-        } else if (key === 'services') {
-            arr = readServices(snap);
-        } else {
-            arr = toArray(snap.val());
-            const cleaned = dedupeList(key, arr);
-            if (cleaned.length !== arr.length) {
-                console.log('Dubbelen verwijderd in', key);
-                db.ref(DATA_PATHS[key]).transaction(cur => {
-                const c = dedupeList(key, toArray(cur));
-                return c.length ? c : null;
-            });
-                arr = cleaned;
-            }
+        let arr = toArray(snap.val());
+        const cleaned = dedupeList(key, arr);
+        if (cleaned.length !== arr.length) {
+            console.log('Dubbelen verwijderd in', key);
+            db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
+            arr = cleaned;
         }
         lastSynced[key] = arr;
         if (key === 'team') allTeam = arr;
@@ -1867,8 +1744,8 @@ function renderServicesList() {
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                    <button onclick="editService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
-                    <button class="danger" onclick="deleteService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
+                    <button onclick="editService(${idx})" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
+                    <button class="danger" onclick="deleteService(${idx})" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>
             </div>
         </div>
@@ -2088,8 +1965,9 @@ function addTeamMember() {
 function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
-        removeBlockouts(b => b.email === email);
+        allBlockouts = allBlockouts.filter(b => b.email !== email);
         saveData('team', allTeam);
+        saveData('blockouts', allBlockouts);
         renderTeamList();
         renderAdminDashboard();
     }
@@ -2110,146 +1988,6 @@ function toggleEditorRole(email, isCurrentlyEditor) {
         renderTeamList();
         showModal('Klaar!', `Editor rol ${action} voor ${member.name}`, [{ text: 'OK', action: closeModal }]);
     }
-}
-
-
-// ===== AUTOMATISCH INROOSTEREN =====
-const ROSTER_ROLES = ['Video', 'Geluid', 'Multimedia', 'Licht'];
-const ROSTER_GAP_DAYS = 28;
-
-function rosterDayNumber(dateStr) {
-    return new Date(dateStr + 'T00:00:00').getTime() / 86400000;
-}
-
-function buildRosterProposal() {
-    const services = JSON.parse(JSON.stringify(allServices))
-        .map(s => ({ ...s, roles: s.roles || {} }))
-        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-
-    const members = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
-    const assignedDays = {};
-    members.forEach(m => assignedDays[m.email] = []);
-
-    // Bestaande indelingen meetellen voor de 4-wekenregel
-    services.forEach(s => {
-        ROSTER_ROLES.forEach(r => {
-            const e = s.roles[r];
-            if (e && assignedDays[e]) assignedDays[e].push(rosterDayNumber(s.date));
-        });
-    });
-
-    const blocked = new Set(allBlockouts.map(b => b.email + '|' + b.date));
-    const proposal = [];
-    const gaps = [];
-
-    services.forEach(s => {
-        const day = rosterDayNumber(s.date);
-        const inThisService = new Set(ROSTER_ROLES.map(r => s.roles[r]).filter(Boolean));
-
-        ROSTER_ROLES.forEach(role => {
-            if (s.roles[role]) return; // bestaande indeling blijft staan
-
-            const candidates = members.filter(m =>
-                (m.role === role || m.role === 'Techniek Lead') &&
-                !inThisService.has(m.email) &&
-                !blocked.has(m.email + '|' + s.date) &&
-                assignedDays[m.email].every(d => Math.abs(d - day) >= ROSTER_GAP_DAYS)
-            );
-
-            if (candidates.length === 0) {
-                gaps.push({ date: s.date, time: s.time, desc: s.desc, role });
-                return;
-            }
-
-            // Langst geleden ingeroosterd komt eerst
-            const lastBefore = email => {
-                const before = assignedDays[email].filter(d => d < day);
-                return before.length ? Math.max(...before) : -Infinity;
-            };
-            candidates.sort((a, b) => (lastBefore(a.email) - lastBefore(b.email)) || a.name.localeCompare(b.name));
-
-            const chosen = candidates[0];
-            s.roles[role] = chosen.email;
-            assignedDays[chosen.email].push(day);
-            inThisService.add(chosen.email);
-
-            proposal.push({
-                date: s.date, time: s.time, desc: s.desc, role,
-                email: chosen.email, name: chosen.name
-            });
-        });
-    });
-
-    return { proposal, gaps };
-}
-
-function openRosterPreview() {
-    const { proposal, gaps } = buildRosterProposal();
-    const roleLabel = r => r === 'Video' ? 'Video (livestream)' : r;
-
-    // Groepeer voorstel per dienst
-    const perService = {};
-    proposal.forEach(p => {
-        const key = p.date + ' ' + p.time;
-        if (!perService[key]) perService[key] = { date: p.date, time: p.time, desc: p.desc, items: [] };
-        perService[key].items.push(p);
-    });
-
-    let html = '';
-    Object.values(perService).forEach(sv => {
-        html += `<div style="margin-bottom: 12px;"><strong>${formatDutchDate(sv.date)} • ${sv.time}</strong> (${sv.desc || 'dienst'})<ul style="margin: 4px 0 0 18px; padding: 0;">`;
-        sv.items.forEach(p => {
-            html += `<li>${roleLabel(p.role)}: ${p.name}</li>`;
-        });
-        html += '</ul></div>';
-    });
-    if (!proposal.length) html += '<p>Er is niets in te roosteren. Alle plekken zijn al ingevuld, of er zijn geen geschikte personen.</p>';
-    if (gaps.length) {
-        html += '<div style="background: #fdecea; color: #922b21; padding: 10px; border-radius: 6px; margin-top: 10px;"><strong>Niet kunnen invullen:</strong><ul style="margin: 4px 0 0 18px; padding: 0;">';
-        gaps.forEach(g => html += `<li>${formatDutchDate(g.date)} • ${g.time}: ${roleLabel(g.role)}</li>`);
-        html += '</ul></div>';
-    }
-
-    let overlay = document.getElementById('rosterOverlay');
-    if (overlay) overlay.remove();
-    overlay = document.createElement('div');
-    overlay.id = 'rosterOverlay';
-    overlay.innerHTML = `
-        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
-            <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 520px; max-height: 85vh; overflow-y: auto;">
-                <h2 style="margin-top: 0;">Voorstel automatisch inroosteren</h2>
-                <p style="font-size: 13px; color: #555;">Dit is nog niet opgeslagen. Controleer het voorstel en kies dan.</p>
-                <div style="line-height: 1.5;">${html}</div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px;">
-                    <button id="rosterCancel" style="padding: 10px 20px; background: #95A5A6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuleren</button>
-                    ${proposal.length ? '<button id="rosterApply" style="padding: 10px 20px; background: #27AE60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">✅ Opslaan</button>' : ''}
-                </div>
-            </div>
-        </div>`;
-    document.body.appendChild(overlay);
-
-    document.getElementById('rosterCancel').onclick = () => overlay.remove();
-    const applyBtn = document.getElementById('rosterApply');
-    if (applyBtn) applyBtn.onclick = () => applyRoster(proposal);
-}
-
-function applyRoster(proposal) {
-    let filled = 0;
-    proposal.forEach(p => {
-        const idx = allServices.findIndex(s => s.date === p.date && s.time === p.time);
-        if (idx < 0) return;
-        allServices[idx].roles = allServices[idx].roles || {};
-        if (!allServices[idx].roles[p.role]) {
-            allServices[idx].roles[p.role] = p.email;
-            filled++;
-        }
-    });
-    saveData('services', allServices);
-    const overlay = document.getElementById('rosterOverlay');
-    if (overlay) overlay.remove();
-    renderServicesList();
-    renderAdminDashboard();
-    showModal('Klaar', '✅ ' + filled + ' plekken ingevuld.', [{ text: 'OK', action: closeModal }]);
 }
 
 function openAddServiceModal() {
@@ -2325,14 +2063,7 @@ function addService() {
     document.getElementById('serviceRepeat').value = 'none';
 }
 
-// Vindt de actuele positie van een dienst op basis van datum|tijd
-function findServiceIndex(key) {
-    return allServices.findIndex(s => (s.date + '|' + s.time) === key);
-}
-
-function deleteService(key) {
-    const idx = findServiceIndex(key);
-    if (idx < 0) return;
+function deleteService(idx) {
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
         saveData('services', allServices);
@@ -2341,9 +2072,7 @@ function deleteService(key) {
     }
 }
 
-function editService(key) {
-    const idx = findServiceIndex(key);
-    if (idx < 0) return;
+function editService(idx) {
     const s = allServices[idx];
     const teamMembers = allTeam.filter(m => !m.admin);
     
@@ -2388,7 +2117,7 @@ function editService(key) {
         }).join('')}
         <div class="modal-buttons">
             <button onclick="closeEditServiceModal()">Annuleren</button>
-            <button class="primary" onclick="saveServiceEdit('${key}')">Opslaan</button>
+            <button class="primary" onclick="saveServiceEdit(${idx})">Opslaan</button>
         </div>
     `;
     
@@ -2396,12 +2125,7 @@ function editService(key) {
     document.getElementById('editServiceModal').classList.add('active');
 }
 
-function saveServiceEdit(key) {
-    const idx = findServiceIndex(key);
-    if (idx < 0) {
-        showModal('Fout', 'Deze dienst bestaat niet meer. Ververs de pagina.', [{ text: 'OK', action: closeModal }]);
-        return;
-    }
+function saveServiceEdit(idx) {
     const oldRoles = Object.assign({}, allServices[idx].roles || {});
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
@@ -2472,13 +2196,8 @@ function addBlockout() {
         return;
     }
     
-    const id = db.ref(DATA_PATHS.blockouts).push().key;
-    const item = { id, email: currentUser.email, date, reason, created: new Date().toISOString() };
-    allBlockouts.push(item);
-    db.ref(DATA_PATHS.blockouts + '/' + id).set(item).catch(err => {
-        console.error('Blokkering opslaan mislukt:', err);
-        showModal('Fout', '❌ Opslaan van je beschikbaarheid is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
-    });
+    allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
+    saveData('blockouts', allBlockouts);
     
     renderTeamView();
     closeBlockoutModal();
@@ -2486,10 +2205,8 @@ function addBlockout() {
 }
 
 function deleteBlockout(idx) {
-    const b = allBlockouts[idx];
-    if (!b) return;
-    if (b.id) removeBlockouts(x => x.id === b.id);
-    else allBlockouts.splice(idx, 1);
+    allBlockouts.splice(idx, 1);
+    saveData('blockouts', allBlockouts);
     renderTeamView();
 }
 
@@ -2498,8 +2215,10 @@ function deleteMyAccount() {
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Doorgaan?')) return;
     
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
-    removeBlockouts(b => b.email === currentUser.email);
+    allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
+    
     saveData('team', allTeam);
+    saveData('blockouts', allBlockouts);
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();

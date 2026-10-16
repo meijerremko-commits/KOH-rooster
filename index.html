@@ -713,7 +713,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v27 - beschikbaarheidslijst';
+const APP_VERSION = 'v28 - duidelijke status';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1936,10 +1936,10 @@ function renderMyAvailability() {
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
                 <div style="flex: 1;">
                     <strong>${formatDutchDate(s.date)}</strong>
-                    ${blocked ? '<br><small style="color: #c0392b;">Je kunt niet</small>' : ''}
+                    <br><small style="color: ${blocked ? '#c0392b' : '#27AE60'}; font-weight: bold;">${blocked ? 'Niet beschikbaar' : 'Beschikbaar'}</small>
                 </div>
                 <button onclick="toggleMyAvailability('${s.date}')" style="padding: 8px 12px; border: none; border-radius: 6px; color: white; font-weight: bold; white-space: nowrap; cursor: pointer; background: ${blocked ? '#27AE60' : '#E74C3C'};">
-                    ${blocked ? '✅ Ik kan wel' : '❌ Ik kan niet'}
+                    ${blocked ? 'Zet op beschikbaar' : 'Zet op niet beschikbaar'}
                 </button>
             </div>`;
     }).join('');
@@ -1969,7 +1969,7 @@ function renderTeamView() {
                     <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
                     ${myRole ? `<small style="background: #e8f4f8; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 5px 0;"><strong>👤 Jouw rol:</strong> ${myRole}</small>` : ''}
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #2B5A7A; font-size: 13px;"><strong>📝 Info:</strong><br>${s.notes}</div>` : ''}
-                    ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
+                    ${isBlocked ? '<br><span class="badge warning">Let op: je hebt aangegeven dat je niet kunt op deze datum</span>' : ''}
                     <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 120px;">📅 Google Calendar</button>
                         <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 100px;">💾 Download .ics</button>

@@ -511,7 +511,7 @@
 
         <!-- SERVICES -->
         <div id="servicesTab" class="tab-content">
-            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button>
+            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button> <button class="danger" onclick="deleteAllServices()" style="margin-bottom: 20px;">🗑️ Alle diensten verwijderen</button>
             <div id="servicesListAdmin"></div>
         </div>
 
@@ -766,7 +766,7 @@ function saveData(key, value) {
     lastSynced[key] = newList;
     if (removed.length === 0 && upserts.length === 0) return;
 
-    db.ref(DATA_PATHS[key]).transaction(current => {
+    return db.ref(DATA_PATHS[key]).transaction(current => {
         let list = toArray(current);
         list = list.filter(i => !removed.includes(kf(i)));
         upserts.forEach(u => {
@@ -2034,6 +2034,15 @@ function toggleEditorRole(email, isCurrentlyEditor) {
     }
 }
 
+function deleteAllServices() {
+    if (!confirm('Alle diensten verwijderen?')) return;
+    if (!confirm('Dit verwijdert ALLE diensten en indelingen. Doorgaan?')) return;
+    allServices = [];
+    saveData('services', []);
+    renderServicesList();
+    renderAdminDashboard();
+}
+
 function openAddServiceModal() {
     document.getElementById('serviceDate').valueAsDate = new Date();
     document.getElementById('addServiceModal').classList.add('active');
@@ -2169,7 +2178,7 @@ function editService(idx) {
     document.getElementById('editServiceModal').classList.add('active');
 }
 
-function saveServiceEdit(idx) {
+async function saveServiceEdit(idx) {
     const oldRoles = Object.assign({}, allServices[idx].roles || {});
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;
@@ -2180,7 +2189,7 @@ function saveServiceEdit(idx) {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
-    saveData('services', allServices);
+    await saveData('services', allServices);
     renderServicesList();
     renderAdminDashboard();
     closeEditServiceModal();

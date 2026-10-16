@@ -517,6 +517,7 @@
 
         <!-- BESCHIKBAARHEID MATRIX -->
         <div id="matrixTab" class="tab-content">
+            <div id="roleOverview" style="margin-bottom: 15px;"></div>
             <h2>📊 Beschikbaarheidmatrix</h2>
             <p class="small-text">Wie is beschikbaar op welke dienst? (Groen = beschikbaar, Rood = niet beschikbaar)</p>
             <div id="matrixContent" style="overflow-x: auto; margin-top: 20px; background: white; padding: 15px; border-radius: 6px;"></div>
@@ -713,7 +714,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v28 - duidelijke status';
+const APP_VERSION = 'v29 - overzicht per rol';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -828,6 +829,7 @@ function refreshAfterRemoteChange() {
             renderAdminDashboard();
             renderTeamList();
             renderServicesList();
+            renderRoleOverview();
         } else {
             renderTeamView();
         }
@@ -1607,7 +1609,59 @@ function switchAdminTab(tab) {
     if (tab === 'requests') renderRegistrationRequests();
     if (tab === 'team') renderTeamList();
     if (tab === 'services') renderServicesList();
-    if (tab === 'matrix') renderAvailabilityMatrix();
+    if (tab === 'matrix') { renderRoleOverview(); renderAvailabilityMatrix(); }
+}
+
+// Overzicht per datum en per rol (admin): wie kan, wie is ingedeeld, wie kan niet
+function renderRoleOverview() {
+    const host = document.getElementById('roleOverview');
+    if (!host) return;
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht'];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dates = [...new Set(allServices.map(s => s.date))]
+        .filter(d => new Date(d + 'T00:00:00') >= today)
+        .sort();
+    if (!dates.length) {
+        host.innerHTML = '<p style="color: #999;">Geen komende diensten.</p>';
+        return;
+    }
+    const members = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
+    const label = r => r === 'Video' ? 'Video (livestream)' : r;
+    const nameOf = email => {
+        const m = allTeam.find(x => x.email === email);
+        return m ? firstNameOf(m.name) : '?';
+    };
+
+    let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+    html += '<tr style="background: #2B5A7A; color: white;"><th style="padding: 6px; text-align: left;">Datum</th>'
+        + roles.map(r => `<th style="padding: 6px;">${label(r)}</th>`).join('') + '</tr>';
+
+    dates.forEach(date => {
+        const servicesOnDate = allServices.filter(s => s.date === date);
+        const blockedEmails = new Set(allBlockouts.filter(b => b.date === date).map(b => b.email));
+        html += `<tr style="border-bottom: 1px solid #ddd;"><td style="padding: 6px; vertical-align: top;"><strong>${formatDutchDate(date)}</strong></td>`;
+        roles.forEach(role => {
+            const eligible = members.filter(m => m.role === role || m.role === 'Techniek Lead');
+            const available = eligible.filter(m => !blockedEmails.has(m.email));
+            const unavailable = eligible.filter(m => blockedEmails.has(m.email));
+            const assigned = servicesOnDate.map(s => s.roles && s.roles[role]).filter(Boolean);
+            const assignedHtml = assigned.length
+                ? assigned.map(e => `<div style="font-weight: bold; color: ${blockedEmails.has(e) ? '#c0392b' : '#2B5A7A'};">${blockedEmails.has(e) ? '⚠ ' : ''}${nameOf(e)}</div>`).join('')
+                : '<div style="color: #e67e22;">— nog niemand</div>';
+            const countColor = available.length === 0 ? '#c0392b' : (available.length < 2 ? '#e67e22' : '#27AE60');
+            const unavailableHtml = unavailable.length
+                ? `<div style="color: #c0392b; font-size: 11px; margin-top: 3px;">Kan niet: ${unavailable.map(m => firstNameOf(m.name)).join(', ')}</div>`
+                : '';
+            html += `<td style="padding: 6px; vertical-align: top; text-align: center;">
+                <div style="color: ${countColor}; font-weight: bold;">${available.length}/${eligible.length} beschikbaar</div>
+                ${assignedHtml}${unavailableHtml}
+            </td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</table></div>';
+    host.innerHTML = html;
 }
 
 function renderAvailabilityMatrix() {

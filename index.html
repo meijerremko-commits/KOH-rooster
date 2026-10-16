@@ -492,10 +492,6 @@
                 <div id="upcomingServices"></div>
             </div>
 
-            <div class="card">
-                <h2>Block-outs</h2>
-                <div id="allBlockouts"></div>
-            </div>
         </div>
 
         <!-- REGISTRATIE VERZOEKEN -->
@@ -517,9 +513,8 @@
 
         <!-- BESCHIKBAARHEID MATRIX -->
         <div id="matrixTab" class="tab-content">
-            <div id="roleOverview" style="margin-bottom: 15px;"></div>
             <h2>📊 Beschikbaarheidmatrix</h2>
-            <p class="small-text">Wie is beschikbaar op welke dienst? (Groen = beschikbaar, Rood = niet beschikbaar)</p>
+            <p class="small-text">Per zondag: wie draait welke rol. ⚠️ = kan niet. "Nodig" = plek is nog leeg.</p>
             <div id="matrixContent" style="overflow-x: auto; margin-top: 20px; background: white; padding: 15px; border-radius: 6px;"></div>
         </div>
 
@@ -717,7 +712,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v30 - matrix zoals PCO';
+const APP_VERSION = 'v32 - inplannen via matrix';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -829,6 +824,7 @@ function refreshAfterRemoteChange() {
     }
     if (typeof currentUser !== 'undefined' && currentUser) {
         if (currentUser.admin) {
+                        renderAvailabilityMatrix();
             renderAdminDashboard();
             renderTeamList();
             renderServicesList();
@@ -1697,14 +1693,15 @@ function renderAvailabilityMatrix() {
 
     const rows = roles.map(role => {
         const cells = services.map(s => {
+            const key = s.date + '|' + s.time;
             const email = s.roles && s.roles[role];
             if (!email) {
-                return '<td style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold;">Nodig</td>';
+                return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold; cursor: pointer;">+ Nodig</td>`;
             }
             const m = allTeam.find(x => x.email === email);
             const name = m ? firstName(m.name) : email;
             const blocked = blockedOn(email, s.date);
-            return `<td style="padding: 8px; text-align: center; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
+            return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
                         <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>
                     </td>`;
         }).join('');
@@ -1719,7 +1716,81 @@ function renderAvailabilityMatrix() {
                 <tbody>${rows}</tbody>
             </table>
         </div>
-        <p style="font-size: 12px; color: #666; margin-top: 8px;">⚠️ = heeft aangegeven niet te kunnen. "Nodig" = plek is nog leeg. Vul die in via Diensten → Bewerk.</p>`;
+        <p style="font-size: 12px; color: #666; margin-top: 8px;">Tik op een cel om iemand in te plannen. ⚠️ = heeft aangegeven niet te kunnen.</p>`;
+}
+
+// ===== Persoon inplannen vanuit de matrix =====
+function openMatrixPicker(key, role) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
+    const s = allServices[idx];
+    const people = allTeam
+        .filter(m => !m.admin && m.role && m.role !== 'Pending')
+        .sort((a, b) => {
+            const aM = (a.role === role || a.role === 'Techniek Lead') ? 0 : 1;
+            const bM = (b.role === role || b.role === 'Techniek Lead') ? 0 : 1;
+            return aM - bM || (a.name || '').localeCompare(b.name || '');
+        });
+    window._matrixPeople = people;
+
+    const d = new Date(s.date + 'T00:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const label = role === 'Video' ? 'Video (livestream)' : role;
+    let buttons = '';
+    people.forEach((m, i) => {
+        const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
+        const roleNote = (m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')';
+        buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: none; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold; border: 1px solid #ddd;">
+                    ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet' : ''}
+                </button>`;
+    });
+    buttons += `<button onclick="matrixPick('${key}', '${role}', -1)" style="display: block; width: 100%; margin: 14px 0 6px; padding: 10px; border: none; border-radius: 6px; background: #E74C3C; color: white; font-weight: bold; cursor: pointer;">Plek leegmaken</button>`;
+    buttons += `<button onclick="closeMatrixPicker()" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: none; border-radius: 6px; background: #95A5A6; color: white; font-weight: bold; cursor: pointer;">Annuleren</button>`;
+
+    let overlay = document.getElementById('matrixPicker');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'matrixPicker';
+    overlay.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+            <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 420px; max-height: 85vh; overflow-y: auto;">
+                <h3 style="margin-top: 0; color: #2B5A7A;">${label}</h3>
+                <p style="color: #555; margin-top: 0;">${d} • ${s.time}</p>
+                ${buttons}
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function closeMatrixPicker() {
+    const overlay = document.getElementById('matrixPicker');
+    if (overlay) overlay.remove();
+}
+
+function matrixPick(key, role, i) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) { closeMatrixPicker(); return; }
+    const s = allServices[idx];
+    s.roles = s.roles || {};
+
+    if (i < 0) {
+        s.roles[role] = '';
+    } else {
+        const m = (window._matrixPeople || [])[i];
+        if (!m) return;
+        const otherRole = Object.keys(s.roles).find(r => r !== role && s.roles[r] === m.email);
+        if (otherRole) {
+            showModal('Let op', m.name + ' staat al op deze dienst als ' + otherRole + '.', [{ text: 'OK', action: closeModal }]);
+            return;
+        }
+        const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
+        if (blocked && !confirm(m.name + ' heeft aangegeven niet te kunnen op deze datum.\n\nToch inplannen?')) return;
+        s.roles[role] = m.email;
+    }
+
+    saveData('services', allServices);
+    closeMatrixPicker();
+    renderAvailabilityMatrix();
+    renderServicesList();
 }
 
 function renderAdminDashboard() {
@@ -1747,7 +1818,8 @@ function renderAdminDashboard() {
         `).join('') : 
         '<p style="color: #999;">Geen komende diensten</p>';
     
-    document.getElementById('allBlockouts').innerHTML = allBlockouts.length ?
+    const abEl = document.getElementById('allBlockouts');
+    if (abEl) abEl.innerHTML = allBlockouts.length ?
         allBlockouts.map(b => {
             const member = allTeam.find(m => m.email === b.email);
             return `

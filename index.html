@@ -717,7 +717,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v29 - tabbladen';
+const APP_VERSION = 'v30 - matrix zoals PCO';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1668,59 +1668,58 @@ function renderRoleOverview() {
 }
 
 function renderAvailabilityMatrix() {
-    // Alleen teamleden (geen pending)
-    const teamMembers = allTeam.filter(m => m.role !== 'Pending' && !m.admin);
-    const futureServices = allServices.filter(s => new Date(s.date) >= new Date()).slice(0, 20);
-    
-    if (futureServices.length === 0) {
-        document.getElementById('matrixContent').innerHTML = '<p style="color: #999;">Geen toekomstige diensten</p>';
+    const el = document.getElementById('matrixContent');
+    if (!el) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const services = allServices
+        .filter(s => new Date(s.date + 'T00:00:00') >= today)
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+        .slice(0, 12);
+    if (!services.length) {
+        el.innerHTML = '<p style="color: #999;">Geen komende diensten.</p>';
         return;
     }
-    
-    // Bouw tabel
-    let html = '<table style="border-collapse: collapse; width: 100%; font-size: 13px;">';
-    
-    // Header rij
-    html += '<tr style="background: #2B5A7A; color: white;">';
-    html += '<th style="padding: 10px; text-align: left; border: 1px solid #ccc;">Teamlid</th>';
-    futureServices.forEach(s => {
-        const date = new Date(s.date);
-        const day = date.toLocaleDateString('nl-NL', { weekday: 'short' });
-        const short = date.toLocaleDateString('nl-NL', { month: 'short', day: 'numeric' });
-        html += `<th style="padding: 10px; border: 1px solid #ccc; white-space: nowrap; font-size: 12px;">${s.desc}<br>${day} ${short}<br>${s.time}</th>`;
-    });
-    html += '</tr>';
-    
-    // Rows voor elk teamlid
-    teamMembers.forEach(member => {
-        html += `<tr style="border: 1px solid #ddd;">`;
-        html += `<td style="padding: 10px; border: 1px solid #ccc; font-weight: bold;">${member.name}</td>`;
-        
-        futureServices.forEach(service => {
-            const isBlocked = allBlockouts.some(b => b.email === member.email && b.date === service.date);
-            const isAssigned = Object.values(service.roles || {}).some(email => 
-                email && email.toLowerCase() === member.email.toLowerCase()
-            );
-            
-            let bg = '#f9f9f9'; // default
-            let symbol = '—';
-            
-            if (isBlocked) {
-                bg = '#ffcccc'; // Rood - niet beschikbaar
-                symbol = '❌';
-            } else if (isAssigned) {
-                bg = '#ccffcc'; // Groen - ingepland
-                symbol = '✅';
+    const people = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht'];
+    const firstName = n => (n || '').split(' ')[0];
+    const blockedOn = (email, date) => allBlockouts.some(b => b.email === email && b.date === date);
+
+    const header = services.map(s => {
+        const cantCount = people.filter(p => blockedOn(p.email, s.date)).length;
+        const d = new Date(s.date + 'T00:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+        return `<th style="padding: 8px; min-width: 110px; text-align: center; border-bottom: 2px solid #2B5A7A;">
+                    <div style="font-weight: bold;">${d}</div>
+                    <div style="font-size: 11px; color: #666;">${s.time}</div>
+                    <div style="font-size: 11px; font-weight: bold; color: ${cantCount ? '#c0392b' : '#27AE60'};">${cantCount} kunnen niet</div>
+                </th>`;
+    }).join('');
+
+    const rows = roles.map(role => {
+        const cells = services.map(s => {
+            const email = s.roles && s.roles[role];
+            if (!email) {
+                return '<td style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold;">Nodig</td>';
             }
-            
-            html += `<td style="padding: 10px; text-align: center; border: 1px solid #ccc; background: ${bg};">${symbol}</td>`;
-        });
-        
-        html += '</tr>';
-    });
-    
-    html += '</table>';
-    document.getElementById('matrixContent').innerHTML = html;
+            const m = allTeam.find(x => x.email === email);
+            const name = m ? firstName(m.name) : email;
+            const blocked = blockedOn(email, s.date);
+            return `<td style="padding: 8px; text-align: center; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
+                        <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>
+                    </td>`;
+        }).join('');
+        const label = role === 'Video' ? 'Video (livestream)' : role;
+        return `<tr><th style="padding: 8px; text-align: left; background: #f2f6fa; white-space: nowrap;">${label}</th>${cells}</tr>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div style="overflow-x: auto;">
+            <table style="border-collapse: collapse; width: 100%; font-size: 13px;">
+                <thead><tr><th style="text-align: left; padding: 8px;">Rol</th>${header}</tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        <p style="font-size: 12px; color: #666; margin-top: 8px;">⚠️ = heeft aangegeven niet te kunnen. "Nodig" = plek is nog leeg. Vul die in via Diensten → Bewerk.</p>`;
 }
 
 function renderAdminDashboard() {
@@ -2459,6 +2458,21 @@ function closeBlockoutModal() {
     document.getElementById('blockoutModal').classList.remove('active');
 }
 
+// Waarschuwt het teamlid als ze op die datum al is ingedeeld
+function warnIfAssignedOn(date) {
+    const hits = [];
+    allServices.filter(s => s.date === date).forEach(s => {
+        Object.entries(s.roles || {}).forEach(([role, email]) => {
+            if (email && currentUser && email.toLowerCase() === currentUser.email.toLowerCase()) {
+                hits.push(role === 'Video' ? 'Video (livestream)' : role);
+            }
+        });
+    });
+    if (hits.length) {
+        showModal('Let op', 'Je staat op deze datum ingedeeld als: ' + hits.join(', ') + '.\n\nDe blokkering is opgeslagen. Laat Remko weten dat je niet kunt komen.', [{ text: 'OK', action: closeModal }]);
+    }
+}
+
 function addBlockout() {
     const date = document.getElementById('blockoutDate').value;
     const reason = document.getElementById('blockoutReason').value.trim();
@@ -2480,6 +2494,7 @@ function addBlockout() {
     const id = db.ref(DATA_PATHS.blockouts).push().key;
     const item = { id, email: currentUser.email, date, reason, created: new Date().toISOString() };
     allBlockouts.push(item);
+    warnIfAssignedOn(date);
     db.ref(DATA_PATHS.blockouts + '/' + id).set(item).catch(err => {
         console.error('Blokkering opslaan mislukt:', err);
         showModal('Fout', '❌ Opslaan van je beschikbaarheid is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);

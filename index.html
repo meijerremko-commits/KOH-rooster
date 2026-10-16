@@ -793,6 +793,7 @@ function toArray(val) {
 }
 
 function refreshAfterRemoteChange() {
+    console.log('[LIVE] scherm verversen, klaar:', dataReady);
     if (!dataReady) return;
     checkNewRegistrations();
     
@@ -931,11 +932,15 @@ function saveServicesDiff(value) {
     list.forEach(s => { if (oldById.get(s.id) !== canonical(s)) updates[s.id] = s; });
 
     lastSynced.services = list;
+    console.log('[DIENST] op server schrijven:', Object.keys(updates).length, 'wijzigingen', updates);
     if (Object.keys(updates).length) {
-        db.ref(DATA_PATHS.services).update(updates).catch(err => {
+        db.ref(DATA_PATHS.services).update(updates)
+            .then(() => console.log('[DIENST] server heeft bevestigd'))
+            .catch(err => {
+                console.error('[DIENST] server WEIGERT:', err);
             console.error('Dienst opslaan mislukt:', err);
-            showModal('Fout', '❌ Opslaan van de dienst is mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
-        });
+                showModal('Fout', '❌ Opslaan van de dienst is mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
+            });
     }
 }
 
@@ -956,6 +961,7 @@ Object.keys(DATA_PATHS).forEach(key => {
                 arr = cleaned;
             }
         }
+        console.log('[LIVE] update ontvangen van server voor:', key, '| aantal:', arr.length);
         lastSynced[key] = arr;
         if (key === 'team') allTeam = arr;
         else if (key === 'services') allServices = arr;

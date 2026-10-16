@@ -555,6 +555,7 @@
         <div class="card">
             <h2>Beschikbaarheid</h2>
             <p style="color: #666; margin-bottom: 15px; font-size: 13px;">Zet jezelf op "niet beschikbaar" als je niet kunt draaien</p>
+            <div id="myAvailability" style="margin: 10px 0;"></div>
             <button class="primary" onclick="openBlockoutModal()" style="margin-bottom: 15px;">+ Block-out toevoegen</button>
             <div id="myBlockouts"></div>
         </div>
@@ -712,7 +713,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v26 - ik kan niet knop';
+const APP_VERSION = 'v27 - beschikbaarheidslijst';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1910,6 +1911,40 @@ function toggleMyAvailability(date) {
     renderTeamView();
 }
 
+// Lijst met alle komende datums: teamlid geeft zelf aan wanneer niet
+function renderMyAvailability() {
+    const el = document.getElementById('myAvailability');
+    if (!el || !currentUser) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const seen = new Set();
+    const upcoming = allServices
+        .filter(s => new Date(s.date + 'T00:00:00') >= today)
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+        .filter(s => {
+            if (seen.has(s.date)) return false;
+            seen.add(s.date);
+            return true;
+        });
+    if (!upcoming.length) {
+        el.innerHTML = '<p style="color: #999;">Er zijn nog geen komende diensten.</p>';
+        return;
+    }
+    el.innerHTML = upcoming.map(s => {
+        const blocked = allBlockouts.some(b => b.email === currentUser.email && b.date === s.date);
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
+                <div style="flex: 1;">
+                    <strong>${formatDutchDate(s.date)}</strong>
+                    ${blocked ? '<br><small style="color: #c0392b;">Je kunt niet</small>' : ''}
+                </div>
+                <button onclick="toggleMyAvailability('${s.date}')" style="padding: 8px 12px; border: none; border-radius: 6px; color: white; font-weight: bold; white-space: nowrap; cursor: pointer; background: ${blocked ? '#27AE60' : '#E74C3C'};">
+                    ${blocked ? '✅ Ik kan wel' : '❌ Ik kan niet'}
+                </button>
+            </div>`;
+    }).join('');
+}
+
 function renderTeamView() {
     const myServices = allServices
         .filter(s => Object.values(s.roles || {}).includes(currentUser.email))
@@ -1935,11 +1970,6 @@ function renderTeamView() {
                     ${myRole ? `<small style="background: #e8f4f8; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 5px 0;"><strong>👤 Jouw rol:</strong> ${myRole}</small>` : ''}
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #2B5A7A; font-size: 13px;"><strong>📝 Info:</strong><br>${s.notes}</div>` : ''}
                     ${isBlocked ? '<br><span class="badge warning">Je bent niet beschikbaar op deze datum</span>' : ''}
-                    <div style="margin-top: 8px;">
-                        <button onclick="toggleMyAvailability('${s.date}')" style="width: 100%; padding: 10px; font-size: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; background: ${isBlocked ? '#27AE60' : '#E74C3C'};">
-                            ${isBlocked ? '✅ Ik kan wel' : '❌ Ik kan niet'}
-                        </button>
-                    </div>
                     <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 120px;">📅 Google Calendar</button>
                         <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 100px;">💾 Download .ics</button>
@@ -2001,6 +2031,7 @@ function renderTeamView() {
             }, 800);
         }
     }
+    renderMyAvailability();
 }
 
 function saveReminderSettings() {

@@ -712,7 +712,13 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v23 - per-record opslag';
+const APP_VERSION = 'v25 - zichtbare versie';
+document.addEventListener('DOMContentLoaded', () => {
+    const tag = document.createElement('div');
+    tag.textContent = 'versie ' + APP_VERSION;
+    tag.style.cssText = 'position:fixed;bottom:4px;right:6px;font-size:11px;color:#333;background:rgba(255,255,255,0.7);padding:2px 6px;border-radius:4px;z-index:9999;pointer-events:none;';
+    document.body.appendChild(tag);
+});
 console.log('ROOSTER VERSIE:', APP_VERSION);
 
 // ===== FIREBASE =====
@@ -966,7 +972,7 @@ Object.keys(DATA_PATHS).forEach(key => {
             }
         }
         console.log('[LIVE] update ontvangen van server voor:', key, '| aantal:', arr.length);
-        lastSynced[key] = arr;
+        lastSynced[key] = JSON.parse(JSON.stringify(arr)); // echte kopie, geen gedeelde referentie
         if (key === 'team') allTeam = arr;
         else if (key === 'services') allServices = arr;
         else allBlockouts = arr;

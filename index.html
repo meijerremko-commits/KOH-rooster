@@ -832,15 +832,60 @@ function dedupeList(key, arr) {
     });
 }
 
+// ===== BLOKKERINGEN: elk een eigen record met eigen ID =====
+function readBlockouts(snap) {
+    const raw = snap.val() || {};
+    const keys = Object.keys(raw).sort((a, b) => {
+        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
+        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
+        return aOk - bOk;
+    });
+    const updates = {};
+    const list = [];
+    const seen = new Set();
+    keys.forEach(k => {
+        const item = raw[k];
+        if (!item || typeof item !== 'object') { updates[k] = null; return; }
+        const dupKey = (item.email || '') + '|' + item.date;
+        if (seen.has(dupKey)) { updates[k] = null; return; }
+        seen.add(dupKey);
+        if (item.id === k) { list.push(item); return; }
+        const newId = db.ref(DATA_PATHS.blockouts).push().key;
+        const migrated = Object.assign({}, item, { id: newId });
+        updates[k] = null;
+        updates[newId] = migrated;
+        list.push(migrated);
+    });
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Omzetten mislukt:', err));
+    }
+    return list;
+}
+
+function removeBlockouts(predicate) {
+    const toRemove = allBlockouts.filter(predicate);
+    const updates = {};
+    toRemove.forEach(b => { if (b.id) updates[b.id] = null; });
+    allBlockouts = allBlockouts.filter(b => !predicate(b));
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Verwijderen mislukt:', err));
+    }
+}
+
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
-        let arr = toArray(snap.val());
-        const cleaned = dedupeList(key, arr);
-        if (cleaned.length !== arr.length) {
-            console.log('Dubbelen verwijderd in', key);
-            db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
-            arr = cleaned;
+        let arr;
+        if (key === 'blockouts') {
+            arr = readBlockouts(snap);
+        } else {
+            arr = toArray(snap.val());
+            const cleaned = dedupeList(key, arr);
+            if (cleaned.length !== arr.length) {
+                console.log('Dubbelen verwijderd in', key);
+                db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
+                arr = cleaned;
+            }
         }
         lastSynced[key] = arr;
         if (key === 'team') allTeam = arr;
@@ -1965,9 +2010,8 @@ function addTeamMember() {
 function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
-        allBlockouts = allBlockouts.filter(b => b.email !== email);
+        removeBlockouts(b => b.email === email);
         saveData('team', allTeam);
-        saveData('blockouts', allBlockouts);
         renderTeamList();
         renderAdminDashboard();
     }
@@ -2196,8 +2240,13 @@ function addBlockout() {
         return;
     }
     
-    allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    saveData('blockouts', allBlockouts);
+    const id = db.ref(DATA_PATHS.blockouts).push().key;
+    const item = { id, email: currentUser.email, date, reason, created: new Date().toISOString() };
+    allBlockouts.push(item);
+    db.ref(DATA_PATHS.blockouts + '/' + id).set(item).catch(err => {
+        console.error('Blokkering opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van je beschikbaarheid is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
     
     renderTeamView();
     closeBlockoutModal();
@@ -2205,8 +2254,10 @@ function addBlockout() {
 }
 
 function deleteBlockout(idx) {
-    allBlockouts.splice(idx, 1);
-    saveData('blockouts', allBlockouts);
+    const b = allBlockouts[idx];
+    if (!b) return;
+    if (b.id) removeBlockouts(x => x.id === b.id);
+    else allBlockouts.splice(idx, 1);
     renderTeamView();
 }
 
@@ -2215,10 +2266,8 @@ function deleteMyAccount() {
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Doorgaan?')) return;
     
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
-    allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
-    
+    removeBlockouts(b => b.email === currentUser.email);
     saveData('team', allTeam);
-    saveData('blockouts', allBlockouts);
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();

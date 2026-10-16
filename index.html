@@ -754,6 +754,10 @@ function saveData(key, value) {
         showModal('Even geduld', '⏳ Gegevens worden nog geladen. Probeer het over een paar seconden opnieuw.', [{ text: 'OK', action: closeModal }]);
         return;
     }
+    if (key === 'services') {
+        saveServicesDiff(value);
+        return;
+    }
     const kf = ITEM_KEY[key];
     const newList = JSON.parse(JSON.stringify(value));
     const oldList = lastSynced[key] || [];
@@ -872,12 +876,77 @@ function removeBlockouts(predicate) {
     }
 }
 
+// ===== DIENSTEN: elk een eigen record met eigen ID =====
+// Sleutels in vaste volgorde, zodat we echte wijzigingen herkennen
+function canonical(obj) {
+    return JSON.stringify(obj, (k, v) => {
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+            return Object.keys(v).sort().reduce((acc, kk) => { acc[kk] = v[kk]; return acc; }, {});
+        }
+        return v;
+    });
+}
+
+// Leest diensten in. Oud formaat (één lijst) wordt eenmalig omgezet.
+function readServices(snap) {
+    const raw = snap.val() || {};
+    const keys = Object.keys(raw).sort((a, b) => {
+        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
+        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
+        return aOk - bOk;
+    });
+    const updates = {};
+    const list = [];
+    const seen = new Set();
+    keys.forEach(k => {
+        const item = raw[k];
+        if (!item || typeof item !== 'object') { updates[k] = null; return; }
+        const dupKey = item.date + '|' + item.time;
+        if (seen.has(dupKey)) { updates[k] = null; return; }
+        seen.add(dupKey);
+        if (item.id === k) { list.push(item); return; }
+        const newId = db.ref(DATA_PATHS.services).push().key;
+        const migrated = Object.assign({}, item, { id: newId });
+        updates[k] = null;
+        updates[newId] = migrated;
+        list.push(migrated);
+    });
+    if (Object.keys(updates).length) {
+        console.log('Diensten omgezet naar nieuw formaat');
+        db.ref(DATA_PATHS.services).update(updates).catch(err => console.error('Omzetten diensten mislukt:', err));
+    }
+    list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    return list;
+}
+
+// Schrijft alleen de diensten die echt zijn veranderd, elk als eigen record
+function saveServicesDiff(value) {
+    value.forEach(s => { if (!s.id) s.id = db.ref(DATA_PATHS.services).push().key; });
+    const list = JSON.parse(JSON.stringify(value));
+
+    const oldById = new Map((lastSynced.services || []).map(s => [s.id, canonical(s)]));
+    const newIds = new Set(list.map(s => s.id));
+    const updates = {};
+    oldById.forEach((_, id) => { if (!newIds.has(id)) updates[id] = null; });
+    list.forEach(s => { if (oldById.get(s.id) !== canonical(s)) updates[s.id] = s; });
+
+    lastSynced.services = list;
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.services).update(updates).catch(err => {
+            console.error('Dienst opslaan mislukt:', err);
+            showModal('Fout', '❌ Opslaan van de dienst is mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
+        });
+    }
+}
+
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
         let arr;
         if (key === 'blockouts') {
             arr = readBlockouts(snap);
+        } else if (key === 'services') {
+            arr = readServices(snap);
         } else {
             arr = toArray(snap.val());
             const cleaned = dedupeList(key, arr);
@@ -1789,8 +1858,8 @@ function renderServicesList() {
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                    <button onclick="editService(${idx})" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
-                    <button class="danger" onclick="deleteService(${idx})" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
+                    <button onclick="editService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
+                    <button class="danger" onclick="deleteService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>
             </div>
         </div>
@@ -2116,7 +2185,14 @@ function addService() {
     document.getElementById('serviceRepeat').value = 'none';
 }
 
-function deleteService(idx) {
+// Vindt de actuele positie van een dienst op basis van datum|tijd
+function findServiceIndex(key) {
+    return allServices.findIndex(s => (s.date + '|' + s.time) === key);
+}
+
+function deleteService(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
         saveData('services', allServices);
@@ -2125,7 +2201,9 @@ function deleteService(idx) {
     }
 }
 
-function editService(idx) {
+function editService(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
     const s = allServices[idx];
     const teamMembers = allTeam.filter(m => !m.admin);
     
@@ -2170,7 +2248,7 @@ function editService(idx) {
         }).join('')}
         <div class="modal-buttons">
             <button onclick="closeEditServiceModal()">Annuleren</button>
-            <button class="primary" onclick="saveServiceEdit(${idx})">Opslaan</button>
+            <button class="primary" onclick="saveServiceEdit('${key}')">Opslaan</button>
         </div>
     `;
     
@@ -2178,7 +2256,12 @@ function editService(idx) {
     document.getElementById('editServiceModal').classList.add('active');
 }
 
-async function saveServiceEdit(idx) {
+async function saveServiceEdit(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) {
+        showModal('Fout', 'Deze dienst bestaat niet meer. Ververs de pagina.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
     const oldRoles = Object.assign({}, allServices[idx].roles || {});
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;

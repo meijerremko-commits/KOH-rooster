@@ -889,7 +889,10 @@ Object.keys(DATA_PATHS).forEach(key => {
             const cleaned = dedupeList(key, arr);
             if (cleaned.length !== arr.length) {
                 console.log('Dubbelen verwijderd in', key);
-                db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
+                db.ref(DATA_PATHS[key]).transaction(cur => {
+                const c = dedupeList(key, toArray(cur));
+                return c.length ? c : null;
+            });
                 arr = cleaned;
             }
         }
@@ -1795,8 +1798,8 @@ function renderServicesList() {
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                    <button onclick="editService(${idx})" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
-                    <button class="danger" onclick="deleteService(${idx})" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
+                    <button onclick="editService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
+                    <button class="danger" onclick="deleteService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>
             </div>
         </div>
@@ -2253,7 +2256,14 @@ function addService() {
     document.getElementById('serviceRepeat').value = 'none';
 }
 
-function deleteService(idx) {
+// Vindt de actuele positie van een dienst op basis van datum|tijd
+function findServiceIndex(key) {
+    return allServices.findIndex(s => (s.date + '|' + s.time) === key);
+}
+
+function deleteService(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
     if (confirm('Dienst verwijderen?')) {
         allServices.splice(idx, 1);
         saveData('services', allServices);
@@ -2262,7 +2272,9 @@ function deleteService(idx) {
     }
 }
 
-function editService(idx) {
+function editService(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
     const s = allServices[idx];
     const teamMembers = allTeam.filter(m => !m.admin);
     
@@ -2307,7 +2319,7 @@ function editService(idx) {
         }).join('')}
         <div class="modal-buttons">
             <button onclick="closeEditServiceModal()">Annuleren</button>
-            <button class="primary" onclick="saveServiceEdit(${idx})">Opslaan</button>
+            <button class="primary" onclick="saveServiceEdit('${key}')">Opslaan</button>
         </div>
     `;
     
@@ -2315,7 +2327,12 @@ function editService(idx) {
     document.getElementById('editServiceModal').classList.add('active');
 }
 
-function saveServiceEdit(idx) {
+function saveServiceEdit(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) {
+        showModal('Fout', 'Deze dienst bestaat niet meer. Ververs de pagina.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
     const oldRoles = Object.assign({}, allServices[idx].roles || {});
     allServices[idx].date = document.getElementById('editDate').value;
     allServices[idx].time = document.getElementById('editTime').value;

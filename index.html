@@ -511,7 +511,7 @@
 
         <!-- SERVICES -->
         <div id="servicesTab" class="tab-content">
-            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button>
+            <button class="primary" onclick="openAddServiceModal()" style="margin-bottom: 20px;">+ Dienst toevoegen</button> <button class="primary" onclick="openRosterPreview()" style="margin-bottom: 20px;">🎲 Automatisch inroosteren</button>
             <div id="servicesListAdmin"></div>
         </div>
 
@@ -832,15 +832,66 @@ function dedupeList(key, arr) {
     });
 }
 
+// ===== BLOKKERINGEN: elk een eigen record met eigen ID =====
+// Leest de lijst in. Oud formaat (één grote lijst) wordt eenmalig omgezet.
+function readBlockouts(snap) {
+    const raw = snap.val() || {};
+    const keys = Object.keys(raw);
+    // Eerst de al correcte records, zodat die bij dubbelen voorrang krijgen
+    keys.sort((a, b) => {
+        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
+        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
+        return aOk - bOk;
+    });
+    const updates = {};
+    const list = [];
+    const seen = new Set();
+    keys.forEach(k => {
+        const item = raw[k];
+        if (!item || typeof item !== 'object') { updates[k] = null; return; }
+        const dupKey = (item.email || '') + '|' + item.date;
+        if (seen.has(dupKey)) { updates[k] = null; return; }
+        seen.add(dupKey);
+        if (item.id === k) { list.push(item); return; }
+        // Oud formaat: maak er een eigen record van
+        const newId = db.ref(DATA_PATHS.blockouts).push().key;
+        const migrated = Object.assign({}, item, { id: newId });
+        updates[k] = null;
+        updates[newId] = migrated;
+        list.push(migrated);
+    });
+    if (Object.keys(updates).length) {
+        console.log('Blokkeringen omgezet naar nieuw formaat');
+        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Omzetten mislukt:', err));
+    }
+    return list;
+}
+
+// Verwijdert alleen de blokkeringen die aan de voorwaarde voldoen
+function removeBlockouts(predicate) {
+    const toRemove = allBlockouts.filter(predicate);
+    const updates = {};
+    toRemove.forEach(b => { if (b.id) updates[b.id] = null; });
+    allBlockouts = allBlockouts.filter(b => !predicate(b));
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.blockouts).update(updates).catch(err => console.error('Verwijderen mislukt:', err));
+    }
+}
+
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
-        let arr = toArray(snap.val());
-        const cleaned = dedupeList(key, arr);
-        if (cleaned.length !== arr.length) {
-            console.log('Dubbelen verwijderd in', key);
-            db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
-            arr = cleaned;
+        let arr;
+        if (key === 'blockouts') {
+            arr = readBlockouts(snap);
+        } else {
+            arr = toArray(snap.val());
+            const cleaned = dedupeList(key, arr);
+            if (cleaned.length !== arr.length) {
+                console.log('Dubbelen verwijderd in', key);
+                db.ref(DATA_PATHS[key]).set(cleaned.length ? cleaned : null);
+                arr = cleaned;
+            }
         }
         lastSynced[key] = arr;
         if (key === 'team') allTeam = arr;
@@ -1965,9 +2016,8 @@ function addTeamMember() {
 function deleteTeamMember(email) {
     if (confirm('Team-lid verwijderen? Dit verwijdert ook alle roosters voor deze persoon.')) {
         allTeam = allTeam.filter(m => m.email !== email);
-        allBlockouts = allBlockouts.filter(b => b.email !== email);
+        removeBlockouts(b => b.email === email);
         saveData('team', allTeam);
-        saveData('blockouts', allBlockouts);
         renderTeamList();
         renderAdminDashboard();
     }
@@ -1988,6 +2038,146 @@ function toggleEditorRole(email, isCurrentlyEditor) {
         renderTeamList();
         showModal('Klaar!', `Editor rol ${action} voor ${member.name}`, [{ text: 'OK', action: closeModal }]);
     }
+}
+
+
+// ===== AUTOMATISCH INROOSTEREN =====
+const ROSTER_ROLES = ['Video', 'Geluid', 'Multimedia', 'Licht'];
+const ROSTER_GAP_DAYS = 28;
+
+function rosterDayNumber(dateStr) {
+    return new Date(dateStr + 'T00:00:00').getTime() / 86400000;
+}
+
+function buildRosterProposal() {
+    const services = JSON.parse(JSON.stringify(allServices))
+        .map(s => ({ ...s, roles: s.roles || {} }))
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+    const members = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
+    const assignedDays = {};
+    members.forEach(m => assignedDays[m.email] = []);
+
+    // Bestaande indelingen meetellen voor de 4-wekenregel
+    services.forEach(s => {
+        ROSTER_ROLES.forEach(r => {
+            const e = s.roles[r];
+            if (e && assignedDays[e]) assignedDays[e].push(rosterDayNumber(s.date));
+        });
+    });
+
+    const blocked = new Set(allBlockouts.map(b => b.email + '|' + b.date));
+    const proposal = [];
+    const gaps = [];
+
+    services.forEach(s => {
+        const day = rosterDayNumber(s.date);
+        const inThisService = new Set(ROSTER_ROLES.map(r => s.roles[r]).filter(Boolean));
+
+        ROSTER_ROLES.forEach(role => {
+            if (s.roles[role]) return; // bestaande indeling blijft staan
+
+            const candidates = members.filter(m =>
+                (m.role === role || m.role === 'Techniek Lead') &&
+                !inThisService.has(m.email) &&
+                !blocked.has(m.email + '|' + s.date) &&
+                assignedDays[m.email].every(d => Math.abs(d - day) >= ROSTER_GAP_DAYS)
+            );
+
+            if (candidates.length === 0) {
+                gaps.push({ date: s.date, time: s.time, desc: s.desc, role });
+                return;
+            }
+
+            // Langst geleden ingeroosterd komt eerst
+            const lastBefore = email => {
+                const before = assignedDays[email].filter(d => d < day);
+                return before.length ? Math.max(...before) : -Infinity;
+            };
+            candidates.sort((a, b) => (lastBefore(a.email) - lastBefore(b.email)) || a.name.localeCompare(b.name));
+
+            const chosen = candidates[0];
+            s.roles[role] = chosen.email;
+            assignedDays[chosen.email].push(day);
+            inThisService.add(chosen.email);
+
+            proposal.push({
+                date: s.date, time: s.time, desc: s.desc, role,
+                email: chosen.email, name: chosen.name
+            });
+        });
+    });
+
+    return { proposal, gaps };
+}
+
+function openRosterPreview() {
+    const { proposal, gaps } = buildRosterProposal();
+    const roleLabel = r => r === 'Video' ? 'Video (livestream)' : r;
+
+    // Groepeer voorstel per dienst
+    const perService = {};
+    proposal.forEach(p => {
+        const key = p.date + ' ' + p.time;
+        if (!perService[key]) perService[key] = { date: p.date, time: p.time, desc: p.desc, items: [] };
+        perService[key].items.push(p);
+    });
+
+    let html = '';
+    Object.values(perService).forEach(sv => {
+        html += `<div style="margin-bottom: 12px;"><strong>${formatDutchDate(sv.date)} • ${sv.time}</strong> (${sv.desc || 'dienst'})<ul style="margin: 4px 0 0 18px; padding: 0;">`;
+        sv.items.forEach(p => {
+            html += `<li>${roleLabel(p.role)}: ${p.name}</li>`;
+        });
+        html += '</ul></div>';
+    });
+    if (!proposal.length) html += '<p>Er is niets in te roosteren. Alle plekken zijn al ingevuld, of er zijn geen geschikte personen.</p>';
+    if (gaps.length) {
+        html += '<div style="background: #fdecea; color: #922b21; padding: 10px; border-radius: 6px; margin-top: 10px;"><strong>Niet kunnen invullen:</strong><ul style="margin: 4px 0 0 18px; padding: 0;">';
+        gaps.forEach(g => html += `<li>${formatDutchDate(g.date)} • ${g.time}: ${roleLabel(g.role)}</li>`);
+        html += '</ul></div>';
+    }
+
+    let overlay = document.getElementById('rosterOverlay');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'rosterOverlay';
+    overlay.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+            <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 520px; max-height: 85vh; overflow-y: auto;">
+                <h2 style="margin-top: 0;">Voorstel automatisch inroosteren</h2>
+                <p style="font-size: 13px; color: #555;">Dit is nog niet opgeslagen. Controleer het voorstel en kies dan.</p>
+                <div style="line-height: 1.5;">${html}</div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px;">
+                    <button id="rosterCancel" style="padding: 10px 20px; background: #95A5A6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuleren</button>
+                    ${proposal.length ? '<button id="rosterApply" style="padding: 10px 20px; background: #27AE60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">✅ Opslaan</button>' : ''}
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    document.getElementById('rosterCancel').onclick = () => overlay.remove();
+    const applyBtn = document.getElementById('rosterApply');
+    if (applyBtn) applyBtn.onclick = () => applyRoster(proposal);
+}
+
+function applyRoster(proposal) {
+    let filled = 0;
+    proposal.forEach(p => {
+        const idx = allServices.findIndex(s => s.date === p.date && s.time === p.time);
+        if (idx < 0) return;
+        allServices[idx].roles = allServices[idx].roles || {};
+        if (!allServices[idx].roles[p.role]) {
+            allServices[idx].roles[p.role] = p.email;
+            filled++;
+        }
+    });
+    saveData('services', allServices);
+    const overlay = document.getElementById('rosterOverlay');
+    if (overlay) overlay.remove();
+    renderServicesList();
+    renderAdminDashboard();
+    showModal('Klaar', '✅ ' + filled + ' plekken ingevuld.', [{ text: 'OK', action: closeModal }]);
 }
 
 function openAddServiceModal() {
@@ -2196,8 +2386,13 @@ function addBlockout() {
         return;
     }
     
-    allBlockouts.push({ email: currentUser.email, date, reason, created: new Date().toISOString() });
-    saveData('blockouts', allBlockouts);
+    const id = db.ref(DATA_PATHS.blockouts).push().key;
+    const item = { id, email: currentUser.email, date, reason, created: new Date().toISOString() };
+    allBlockouts.push(item);
+    db.ref(DATA_PATHS.blockouts + '/' + id).set(item).catch(err => {
+        console.error('Blokkering opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van je beschikbaarheid is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
     
     renderTeamView();
     closeBlockoutModal();
@@ -2205,8 +2400,10 @@ function addBlockout() {
 }
 
 function deleteBlockout(idx) {
-    allBlockouts.splice(idx, 1);
-    saveData('blockouts', allBlockouts);
+    const b = allBlockouts[idx];
+    if (!b) return;
+    if (b.id) removeBlockouts(x => x.id === b.id);
+    else allBlockouts.splice(idx, 1);
     renderTeamView();
 }
 
@@ -2215,10 +2412,8 @@ function deleteMyAccount() {
     if (!confirm('Dit kan niet ongedaan gemaakt worden. Doorgaan?')) return;
     
     allTeam = allTeam.filter(m => m.email !== currentUser.email);
-    allBlockouts = allBlockouts.filter(b => b.email !== currentUser.email);
-    
+    removeBlockouts(b => b.email === currentUser.email);
     saveData('team', allTeam);
-    saveData('blockouts', allBlockouts);
     
     alert('Jouw account is verwijderd. Neem contact op met de beheerder.');
     handleLogout();

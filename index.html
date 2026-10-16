@@ -548,15 +548,18 @@
 
     <!-- TEAM MEMBER VIEW -->
     <div id="teamView" style="display: none;">
-        <div class="card">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button id="tabBtnDiensten" class="primary" onclick="showTeamTab('diensten')" style="flex: 1;">Mijn diensten</button>
+            <button id="tabBtnBeschikbaarheid" class="primary" onclick="showTeamTab('beschikbaarheid')" style="flex: 1; opacity: 0.6;">Beschikbaarheid</button>
+        </div>
+        <div class="card" id="cardDiensten">
             <h2>Jouw volgende diensten</h2>
             <div id="myServices"></div>
         </div>
 
-        <div class="card">
+        <div class="card" id="cardBeschikbaarheid">
             <h2>Beschikbaarheid</h2>
-            <p style="color: #666; margin-bottom: 15px; font-size: 13px;">Zet jezelf op "niet beschikbaar" als je niet kunt draaien</p>
-            <div id="myAvailability" style="margin: 10px 0;"></div>
+            <p style="color: #666; margin-bottom: 15px; font-size: 13px;">Geef hier de datums aan waarop je niet kunt draaien.</p>
             <button class="primary" onclick="openBlockoutModal()" style="margin-bottom: 15px;">+ Block-out toevoegen</button>
             <div id="myBlockouts"></div>
         </div>
@@ -714,7 +717,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v29 - overzicht per rol';
+const APP_VERSION = 'v29 - tabbladen';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1999,6 +2002,16 @@ function renderMyAvailability() {
     }).join('');
 }
 
+// Welk tabblad is actief in het teamlid-scherm
+let currentTeamTab = 'diensten';
+function showTeamTab(tab) {
+    currentTeamTab = tab;
+    document.getElementById('cardDiensten').style.display = tab === 'diensten' ? 'block' : 'none';
+    document.getElementById('cardBeschikbaarheid').style.display = tab === 'beschikbaarheid' ? 'block' : 'none';
+    document.getElementById('tabBtnDiensten').style.opacity = tab === 'diensten' ? '1' : '0.6';
+    document.getElementById('tabBtnBeschikbaarheid').style.opacity = tab === 'beschikbaarheid' ? '1' : '0.6';
+}
+
 function renderTeamView() {
     const myServices = allServices
         .filter(s => Object.values(s.roles || {}).includes(currentUser.email))
@@ -2018,15 +2031,15 @@ function renderTeamView() {
             }
             
             return `
-                <div class="service-card" style="${isBlocked ? 'border-color: #dc3545; background: #fff5f5;' : ''}">
-                    <strong>${s.desc || 'Dienst'}</strong><br>
-                    <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
-                    ${myRole ? `<small style="background: #e8f4f8; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 5px 0;"><strong>👤 Jouw rol:</strong> ${myRole}</small>` : ''}
-                    ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #2B5A7A; font-size: 13px;"><strong>📝 Info:</strong><br>${s.notes}</div>` : ''}
-                    ${isBlocked ? '<br><span class="badge warning">Let op: je hebt aangegeven dat je niet kunt op deze datum</span>' : ''}
-                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 120px;">📅 Google Calendar</button>
-                        <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 6px 12px; font-size: 12px; flex: 1; min-width: 100px;">💾 Download .ics</button>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 10px; margin: 6px 0; border-radius: 6px; background: ${isBlocked ? '#fff5f5' : '#f8fbff'}; border-left: 4px solid ${isBlocked ? '#dc3545' : '#87CEEB'};">
+                    <div style="flex: 1; min-width: 180px;">
+                        <strong>${new Date(s.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</strong> • ${s.time}
+                        ${myRole ? ' • <span style="color: #2B5A7A;">' + myRole + '</span>' : ''}
+                        ${isBlocked ? '<span style="color: #c0392b; font-weight: bold;"> • niet beschikbaar</span>' : ''}
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 4px 8px; font-size: 11px;">📅</button>
+                        <button class="primary" onclick="addToLocalCalendar(${idx})" style="padding: 4px 8px; font-size: 11px;">💾</button>
                     </div>
                 </div>
             `;
@@ -2085,7 +2098,7 @@ function renderTeamView() {
             }, 800);
         }
     }
-    renderMyAvailability();
+    showTeamTab(currentTeamTab);
 }
 
 function saveReminderSettings() {

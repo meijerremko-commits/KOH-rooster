@@ -444,6 +444,7 @@
                 <option value="Geluid">Geluid</option>
                 <option value="Multimedia">Multimedia</option>
                 <option value="Licht">Licht</option>
+                <option value="Senior">Senior (regisseur)</option>
                 <option value="Weet ik nog niet">Weet ik nog niet</option>
             </select>
         </div>
@@ -455,6 +456,7 @@
                 <option value="Geluid">Geluid</option>
                 <option value="Multimedia">Multimedia</option>
                 <option value="Licht">Licht</option>
+                <option value="Senior">Senior (regisseur)</option>
             </select>
         </div>
         <div class="form-group">
@@ -738,7 +740,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v40 - voorkeur rol bij aanmelding';
+const APP_VERSION = 'v42 - Senior in matrix';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1891,7 +1893,7 @@ function renderAvailabilityMatrix() {
         return;
     }
     const people = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
-    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht'];
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'];
     const firstName = n => (n || '').split(' ')[0];
     const blockedOn = (email, date) => allBlockouts.some(b => b.email === email && b.date === date);
 
@@ -1910,6 +1912,9 @@ function renderAvailabilityMatrix() {
             const key = s.date + '|' + s.time;
             const email = s.roles && s.roles[role];
             if (!email) {
+                if (role === 'Senior') {
+                    return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; color: #aaa; cursor: pointer;">–</td>`;
+                }
                 return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold; cursor: pointer;">+ Nodig</td>`;
             }
             const m = allTeam.find(x => x.email === email);
@@ -2829,8 +2834,8 @@ function editTeamMember(email) {
             renderAdminDashboard();
         }
     } else if (options === '3') {
-        const choice = prompt(member.name + ' - kies een rol:\n1 = Video (livestream)\n2 = Geluid\n3 = Multimedia\n4 = Licht\n5 = Techniek Lead\n6 = Geen rol', '');
-        const map = { '1': 'Video', '2': 'Geluid', '3': 'Multimedia', '4': 'Licht', '5': 'Techniek Lead', '6': 'Geen rol' };
+        const choice = prompt(member.name + ' - kies een rol:\n1 = Video (livestream)\n2 = Geluid\n3 = Multimedia\n4 = Licht\n5 = Techniek Lead\n6 = Geen rol\n7 = Senior (regisseur)', '');
+        const map = { '1': 'Video', '2': 'Geluid', '3': 'Multimedia', '4': 'Licht', '5': 'Techniek Lead', '6': 'Geen rol', '7': 'Senior' };
         if (choice && map[choice.trim()]) {
             member.role = map[choice.trim()];
             saveData('team', allTeam);

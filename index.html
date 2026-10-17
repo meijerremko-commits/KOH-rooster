@@ -712,7 +712,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v32 - inplannen via matrix';
+const APP_VERSION = 'v33 - sticky rollen en notities';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1706,13 +1706,13 @@ function renderAvailabilityMatrix() {
                     </td>`;
         }).join('');
         const label = role === 'Video' ? 'Video (livestream)' : role;
-        return `<tr><th style="padding: 8px; text-align: left; background: #f2f6fa; white-space: nowrap;">${label}</th>${cells}</tr>`;
+        return `<tr><th style="padding: 8px; text-align: left; background: #f2f6fa; white-space: nowrap; position: sticky; left: 0; z-index: 2; box-shadow: 2px 0 0 #ddd;">${label}</th>${cells}</tr>`;
     }).join('');
 
     el.innerHTML = `
         <div style="overflow-x: auto;">
             <table style="border-collapse: collapse; width: 100%; font-size: 13px;">
-                <thead><tr><th style="text-align: left; padding: 8px;">Rol</th>${header}</tr></thead>
+                <thead><tr><th style="text-align: left; padding: 8px; background: #fff; position: sticky; left: 0; z-index: 3; box-shadow: 2px 0 0 #ddd;">Rol</th>${header}</tr></thead>
                 <tbody>${rows}</tbody>
             </table>
         </div>
@@ -2107,6 +2107,7 @@ function renderTeamView() {
                         <strong>${new Date(s.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</strong> • ${s.time}
                         ${myRole ? ' • <span style="color: #2B5A7A;">' + myRole + '</span>' : ''}
                         ${isBlocked ? '<span style="color: #c0392b; font-weight: bold;"> • niet beschikbaar</span>' : ''}
+                        ${s.notes ? '<div style="font-size: 12px; color: #2B5A7A; margin-top: 3px;">📝 ' + s.notes + '</div>' : ''}
                     </div>
                     <div style="display: flex; gap: 6px;">
                         <button class="primary" onclick="addToGoogleCalendar(${idx})" style="padding: 4px 8px; font-size: 11px;">📅</button>

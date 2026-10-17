@@ -304,54 +304,47 @@
 <body>
 
 <div id="loginScreen" class="login-screen">
-    <div class="login-box">
-        <h1>Rooster Techniek</h1>
-        <p class="subtitle">Kijk Omhoog</p>
-        
-        <div id="newRequestsBadge" style="background: #E74C3C; color: white; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; font-size: 14px;">
+    <div class="login-box" style="max-width: 380px; margin: 40px auto 0; text-align: center;">
+        <h1 style="margin-bottom: 4px;">Rooster Techniek</h1>
+        <p class="subtitle" style="margin-top: 0;">Kijk Omhoog</p>
+
+        <div id="newRequestsBadge" style="background: #E74C3C; color: white; padding: 12px; border-radius: 6px; margin: 16px 0; display: none; font-weight: bold; font-size: 14px;">
             🔔 <span id="badgeCount">0</span> NIEUW(E) REGISTRATIE(S)
         </div>
-        
-        <div class="form-group">
-            <label>Email</label>
+
+        <div class="form-group" style="text-align: left; margin-top: 20px;">
+            <label>E-mail</label>
             <input type="email" id="loginEmail" placeholder="je@mail.nl">
         </div>
-        <div class="form-group">
+        <div class="form-group" style="text-align: left;">
             <label>PIN</label>
-            <input type="password" id="loginPin" placeholder="1234">
+            <input type="password" id="loginPin" placeholder="PIN">
         </div>
-        
-        <div style="margin-bottom: 15px;">
-            <input type="checkbox" id="rememberMe" style="width: 16px; height: 16px; cursor: pointer;">
-            <label for="rememberMe" style="display: inline; margin-left: 8px; font-size: 14px; cursor: pointer;">👤 Onthouden op dit apparaat</label>
-        </div>
-        
-        <div class="privacy-statement">
-            <strong>Privacy & GDPR</strong><br><br>
-            Deze app verwerkt jouw gegevens (naam, email, PIN, rol, beschikbaarheid). 
-            Alle gegevens worden opgeslagen in jouw browser (niet op servers).
-            Je hebt het recht om je account en alle gegevens te laten verwijderen.
-            Neem contact op met de beheerder voor vragen.<br><br>
-            Met inloggen accepteer je dit.
-        </div>
-        
-        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Inloggen</button>
-        
-        <button id="biometricBtn" style="width: 100%; padding: 12px; margin-bottom: 10px; background: #5B8FC7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;" onclick="biometricLogin()">🔒 Biometrisch inloggen</button>
-        
-        <div style="text-align: center; margin-top: 10px; display: flex; gap: 5px;">
-            <button style="flex: 1; padding: 8px; font-size: 12px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
-            <button id="forgetBtn" style="flex: 0; padding: 8px 12px; font-size: 12px; background: #f9f9f9; color: #666; display: none;" onclick="forgetThisDevice()" title="Vergeten op dit apparaat">✕</button>
-        </div>
-        
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-            <p class="small-text" style="margin-bottom: 10px;">Eerste keer?</p>
-            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="cleanResetAndSetup()">👤 Admin Setup</button>
-            
-            <p class="small-text" style="margin-bottom: 10px; margin-top: 15px;">Ben je team-lid?</p>
-            <button style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="showRegistration()">📝 Registreer als team-lid</button>
-            
 
+        <div style="text-align: left; margin: 6px 0 14px;">
+            <input type="checkbox" id="rememberMe" style="width: 16px; height: 16px; cursor: pointer;">
+            <label for="rememberMe" style="display: inline; margin-left: 8px; font-size: 14px; cursor: pointer;">Onthoud mij op dit apparaat</label>
+        </div>
+
+        <button class="primary" style="width: 100%; padding: 12px; margin-bottom: 10px;" onclick="handleLogin()">Log in</button>
+
+        <button id="biometricBtn" style="width: 100%; padding: 12px; margin-bottom: 10px; background: #5B8FC7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;" onclick="biometricLogin()">🔒 Log in met vingerafdruk</button>
+
+        <div style="display: flex; justify-content: center; gap: 12px; margin-top: 6px;">
+            <button style="background: none; border: none; color: #2B5A7A; text-decoration: underline; cursor: pointer; font-size: 13px;" onclick="showForgotPassword()">Wachtwoord vergeten?</button>
+            <button id="forgetBtn" style="background: none; border: none; color: #888; cursor: pointer; font-size: 13px; display: none;" onclick="forgetThisDevice()" title="Vergeten op dit apparaat">✕ vergeet dit apparaat</button>
+        </div>
+
+        <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #eee; font-size: 13px; color: #555;">
+            <div style="margin-bottom: 8px;">Nog geen account?
+                <button style="background: none; border: none; color: #2B5A7A; text-decoration: underline; cursor: pointer; font-size: 13px;" onclick="showRegistration()">Registreer als team-lid</button>
+            </div>
+            <div style="margin-bottom: 8px;">Beheerder, eerste keer?
+                <button style="background: none; border: none; color: #2B5A7A; text-decoration: underline; cursor: pointer; font-size: 13px;" onclick="cleanResetAndSetup()">Admin Setup</button>
+            </div>
+            <div>
+                <button style="background: none; border: none; color: #888; text-decoration: underline; cursor: pointer; font-size: 12px;" onclick="showPrivacy()">Privacy & GDPR</button>
+            </div>
         </div>
     </div>
 </div>
@@ -710,9 +703,10 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v33 - sticky rollen en notities';
+const APP_VERSION = 'v37 - telefoon apart';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -733,6 +727,23 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
+const ADMIN_EMAIL = 'remko_meijer@hotmail.com';
+
+// Admin logt eenmalig per apparaat in met e-mail en wachtwoord (Firebase)
+async function ensureAdminSignIn() {
+    if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL) return true;
+    const pw = prompt('Firebase-wachtwoord van de beheerder (eenmalig per apparaat):');
+    if (!pw) return false;
+    try {
+        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw);
+        return true;
+    } catch (err) {
+        console.error('Firebase-inlog mislukt:', err);
+        showModal('Fout', '❌ Het wachtwoord klopt niet. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+        return false;
+    }
+}
 
 const DATA_PATHS = {
     team: 'rooster/team',
@@ -766,6 +777,10 @@ function saveData(key, value) {
     }
     if (key === 'services') {
         saveServicesDiff(value);
+        return;
+    }
+    if (key === 'team') {
+        saveTeamDiff(value);
         return;
     }
     const kf = ITEM_KEY[key];
@@ -956,6 +971,121 @@ function saveServicesDiff(value) {
     }
 }
 
+// ===== TEAMLEDEN: elk een eigen record met eigen ID =====
+// Leest de teamlijst in. Oud formaat (één lijst) wordt eenmalig omgezet. Dubbele e-mails worden verwijderd.
+function readTeam(snap) {
+    const raw = snap.val() || {};
+    const keys = Object.keys(raw).sort((a, b) => {
+        const aOk = raw[a] && raw[a].id === a ? 0 : 1;
+        const bOk = raw[b] && raw[b].id === b ? 0 : 1;
+        return aOk - bOk;
+    });
+    const updates = {};
+    const list = [];
+    const seen = new Set();
+    const legacyPhones = {};
+    const adminNow = isAdminSignedIn();
+    keys.forEach(k => {
+        const item = raw[k];
+        if (!item || typeof item !== 'object') { updates[k] = null; return; }
+        const mail = (item.email || '').toLowerCase();
+        if (mail && seen.has(mail)) { updates[k] = null; return; }
+        if (mail) seen.add(mail);
+        if (item.id === k) {
+            if (item.phone !== undefined && adminNow) {
+                legacyPhones[k] = item.phone;
+                updates[k + '/phone'] = null;
+            }
+            const clean = Object.assign({}, item);
+            delete clean.phone;
+            list.push(clean);
+            return;
+        }
+        const newId = db.ref(DATA_PATHS.team).push().key;
+        const migrated = Object.assign({}, item, { id: newId });
+        if (item.phone !== undefined && adminNow) legacyPhones[newId] = item.phone;
+        delete migrated.phone;
+        updates[k] = null;
+        updates[newId] = migrated;
+        list.push(migrated);
+    });
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.team).update(updates).catch(err => console.error('Omzetten teamlijst mislukt:', err));
+    }
+    if (Object.keys(legacyPhones).length) {
+        db.ref(PHONES_PATH).update(legacyPhones).catch(err => console.error('Telefoons verplaatsen mislukt:', err));
+    }
+    return list;
+}
+
+// Schrijft alleen de teamleden die echt zijn veranderd, elk als eigen record
+function saveTeamDiff(value) {
+    value.forEach(m => { if (!m.id) m.id = db.ref(DATA_PATHS.team).push().key; });
+    const list = JSON.parse(JSON.stringify(value));
+    const oldById = new Map((lastSynced.team || []).map(m => [m.id, canonical(stripPhone(m))]));
+    const newIds = new Set(list.map(m => m.id));
+    const updates = {};
+    const phoneUpdates = {};
+    oldById.forEach((_, id) => {
+        if (!newIds.has(id)) { updates[id] = null; phoneUpdates[id] = null; }
+    });
+    list.forEach(m => {
+        const clean = stripPhone(m);
+        if (oldById.get(m.id) !== canonical(clean)) updates[m.id] = clean;
+        if (m.phone !== undefined) {
+            const p = m.phone || '';
+            if (p !== (memberPhones[m.id] || '')) phoneUpdates[m.id] = p || null;
+        }
+    });
+    lastSynced.team = list.map(stripPhone);
+    if (Object.keys(updates).length) {
+        db.ref(DATA_PATHS.team).update(updates).catch(err => {
+            console.error('Teamlid opslaan mislukt:', err);
+            showModal('Fout', '❌ Opslaan van het teamlid is mislukt. Controleer je internetverbinding en probeer opnieuw.', [{ text: 'OK', action: closeModal }]);
+        });
+    }
+    if (Object.keys(phoneUpdates).length) {
+        Object.keys(phoneUpdates).forEach(id => {
+            if (phoneUpdates[id]) memberPhones[id] = phoneUpdates[id];
+            else delete memberPhones[id];
+        });
+        db.ref(PHONES_PATH).update(phoneUpdates).catch(err => console.error('Telefoon opslaan mislukt:', err));
+    }
+}
+
+// ===== TELEFOONNUMMERS: apart opgeslagen, alleen zichtbaar voor de beheerder =====
+const PHONES_PATH = 'rooster/phones';
+let memberPhones = {};
+
+function stripPhone(m) {
+    const c = Object.assign({}, m);
+    delete c.phone;
+    return c;
+}
+
+function isAdminSignedIn() {
+    return !!(auth.currentUser && auth.currentUser.email === ADMIN_EMAIL);
+}
+
+// Zet de telefoonnummers op de leden in het geheugen (alleen voor de beheerder)
+function applyPhones() {
+    allTeam.forEach(m => {
+        if (m.id && memberPhones[m.id] !== undefined) m.phone = memberPhones[m.id];
+    });
+}
+
+function attachPhoneListener() {
+    db.ref(PHONES_PATH).on('value', snap => {
+        memberPhones = snap.val() || {};
+        applyPhones();
+        refreshAfterRemoteChange();
+    }, err => console.error('Telefoons lezen mislukt:', err));
+}
+
+auth.onAuthStateChanged(u => {
+    if (u && u.email === ADMIN_EMAIL) attachPhoneListener();
+});
+
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
     db.ref(DATA_PATHS[key]).on('value', snap => {
@@ -964,6 +1094,8 @@ Object.keys(DATA_PATHS).forEach(key => {
             arr = readBlockouts(snap);
         } else if (key === 'services') {
             arr = readServices(snap);
+        } else if (key === 'team') {
+            arr = readTeam(snap);
         } else {
             arr = toArray(snap.val());
             const cleaned = dedupeList(key, arr);
@@ -975,7 +1107,7 @@ Object.keys(DATA_PATHS).forEach(key => {
         }
         console.log('[LIVE] update ontvangen van server voor:', key, '| aantal:', arr.length);
         lastSynced[key] = JSON.parse(JSON.stringify(arr)); // echte kopie, geen gedeelde referentie
-        if (key === 'team') allTeam = arr;
+        if (key === 'team') { allTeam = arr; applyPhones(); }
         else if (key === 'services') allServices = arr;
         else allBlockouts = arr;
 
@@ -1017,7 +1149,7 @@ function showRegistration() {
 async function loadTeamFromServer() {
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
     const snap = await Promise.race([db.ref(DATA_PATHS.team).once('value'), timeout]);
-    allTeam = toArray(snap.val());
+    allTeam = readTeam(snap);
     lastSynced.team = JSON.parse(JSON.stringify(allTeam));
     return allTeam;
 }
@@ -1190,6 +1322,11 @@ window.addEventListener('storage', () => {
     checkNewRegistrations();
 });
 
+// Privacy-informatie (GDPR)
+function showPrivacy() {
+    showModal('Privacy & GDPR', 'Welke gegevens: naam, e-mailadres, telefoonnummer, geboortedatum, PIN-code, rol, beschikbaarheid en notities. Waar: in een database van Google (Firebase), met servers in België. Wie beheert deze gegevens: Remko Meijer, beheerder van het techniekteam. Waarvoor: alleen voor de planning van het techniekteam. Bewaren: zolang je in het team zit. Je hebt het recht om je gegevens in te zien, te laten wijzigen of te laten verwijderen. Neem daarvoor contact op met de beheerder. Beveiliging: alleen de beheerder kan de planning wijzigen. Let op: de PIN-codes zijn nog niet afgeschermd voor iemand die de link kent. Daar wordt nog aan gewerkt.', [{ text: 'Sluiten', action: closeModal }]);
+}
+
 function showForgotPassword() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('forgotPasswordScreen').style.display = 'flex';
@@ -1289,7 +1426,7 @@ async function createAdminAccount() {
     try {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
         const snap = await Promise.race([db.ref(DATA_PATHS.team).once('value'), timeout]);
-        serverTeam = toArray(snap.val());
+        serverTeam = readTeam(snap);
     } catch (err) {
         showModal('Fout', '❌ Kan de server niet bereiken. Controleer je internetverbinding.', [{ text: 'OK', action: closeModal }]);
         return;
@@ -1523,6 +1660,7 @@ async function handleLogin() {
         localStorage.removeItem('rooster_remembered_user');
     }
     
+    if (user.admin && !(await ensureAdminSignIn())) return;
     enterApp(user);
 }
 
@@ -1663,6 +1801,12 @@ function renderRoleOverview() {
     host.innerHTML = html;
 }
 
+// Reden van afwezigheid van een persoon op een datum
+function blockoutReason(email, date) {
+    const b = allBlockouts.find(x => x.email === email && x.date === date);
+    return b ? (b.reason || '') : '';
+}
+
 function renderAvailabilityMatrix() {
     const el = document.getElementById('matrixContent');
     if (!el) return;
@@ -1702,7 +1846,7 @@ function renderAvailabilityMatrix() {
             const name = m ? firstName(m.name) : email;
             const blocked = blockedOn(email, s.date);
             return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
-                        <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>
+                        <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>${blocked ? '<br><small style="color: #c0392b; font-weight: normal;">' + blockoutReason(email, s.date) + '</small>' : ''}
                     </td>`;
         }).join('');
         const label = role === 'Video' ? 'Video (livestream)' : role;
@@ -1740,7 +1884,7 @@ function openMatrixPicker(key, role) {
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
         const roleNote = (m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')';
         buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: none; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold; border: 1px solid #ddd;">
-                    ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet' : ''}
+                    ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet: ' + blockoutReason(m.email, s.date) : ''}
                 </button>`;
     });
     buttons += `<button onclick="matrixPick('${key}', '${role}', -1)" style="display: block; width: 100%; margin: 14px 0 6px; padding: 10px; border: none; border-radius: 6px; background: #E74C3C; color: white; font-weight: bold; cursor: pointer;">Plek leegmaken</button>`;

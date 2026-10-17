@@ -437,6 +437,27 @@
             <input type="tel" id="regPhone" placeholder="+31 6 12345678">
         </div>
         <div class="form-group">
+            <label>Mijn hoofdtaak in het team</label>
+            <select id="regRol">
+                <option value="">-- Kies --</option>
+                <option value="Video">Video (livestream)</option>
+                <option value="Geluid">Geluid</option>
+                <option value="Multimedia">Multimedia</option>
+                <option value="Licht">Licht</option>
+                <option value="Weet ik nog niet">Weet ik nog niet</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Tweede rol (optioneel)</label>
+            <select id="regRol2">
+                <option value="Geen">Geen</option>
+                <option value="Video">Video (livestream)</option>
+                <option value="Geluid">Geluid</option>
+                <option value="Multimedia">Multimedia</option>
+                <option value="Licht">Licht</option>
+            </select>
+        </div>
+        <div class="form-group">
             <label>Geboortedatum</label>
             <input type="date" id="regBirthDate">
         </div>
@@ -717,7 +738,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v38 - handleiding, logo, achtergrond';
+const APP_VERSION = 'v40 - voorkeur rol bij aanmelding';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1175,6 +1196,8 @@ async function submitRegistration() {
     const lastName = document.getElementById('regLastName').value.trim();
     const email = document.getElementById('regEmail').value.trim().toLowerCase();
     const phone = document.getElementById('regPhone').value.trim();
+    const voorkeurRol = document.getElementById('regRol') ? document.getElementById('regRol').value : '';
+    const tweedeRol = document.getElementById('regRol2') ? document.getElementById('regRol2').value : '';
     const birthDate = document.getElementById('regBirthDate').value;
     const pin = document.getElementById('regPin').value.trim();
     
@@ -1210,6 +1233,8 @@ async function submitRegistration() {
         name: firstName + ' ' + lastName,
         email: email,
         phone: phone,
+        voorkeurRol: voorkeurRol,
+        tweedeRol: tweedeRol,
         birthDate: birthDate,
         pin: pin.toString(), // Zorg dat PIN een string is
         role: 'Pending',
@@ -2047,6 +2072,7 @@ function renderRegistrationRequests() {
                     <small style="color: #666;">
                         Email: ${req.email}<br>
                         Telefoon: ${req.phone}<br>
+                        Voorkeur: ${req.voorkeurRol || '–'}${req.tweedeRol && req.tweedeRol !== 'Geen' ? ', tweede: ' + req.tweedeRol : ''}<br>
                         Geboortedatum: ${new Date(req.birthDate).toLocaleDateString('nl-NL')}<br>
                         Aangemeld: ${new Date(req.created).toLocaleDateString('nl-NL')}
                     </small>
@@ -2151,6 +2177,7 @@ function renderTeamList() {
                 <small style="color: #666;">
                     Email: ${member.email}<br>
                     Telefoon: ${member.phone || '–'}<br>
+                    ${member.voorkeurRol ? 'Voorkeur: ' + member.voorkeurRol + (member.tweedeRol && member.tweedeRol !== 'Geen' ? ', tweede: ' + member.tweedeRol : '') + '<br>' : ''}
                     Geboortedatum: ${member.birthDate ? new Date(member.birthDate).toLocaleDateString('nl-NL') : '–'}<br>
                     Rol: ${rolesText}
                 </small>

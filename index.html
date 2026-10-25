@@ -740,7 +740,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.44';
+const APP_VERSION = '1.46';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -765,18 +765,22 @@ const auth = firebase.auth();
 const ADMIN_EMAIL = 'remko_meijer@hotmail.com';
 
 // Admin logt eenmalig per apparaat in met e-mail en wachtwoord (Firebase)
-async function ensureAdminSignIn() {
-    if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL) return true;
-    const pw = prompt('Firebase-wachtwoord van de beheerder (eenmalig per apparaat):');
+async function ensureSignIn(email, rol) {
+    if (auth.currentUser && auth.currentUser.email === email) return true;
+    const pw = prompt('Firebase-wachtwoord van ' + rol + ' (eenmalig per apparaat):');
     if (!pw) return false;
     try {
-        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw);
+        await auth.signInWithEmailAndPassword(email, pw);
         return true;
     } catch (err) {
         console.error('Firebase-inlog mislukt:', err);
         showModal('Fout', '❌ Het wachtwoord klopt niet. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
         return false;
     }
+}
+
+async function ensureAdminSignIn() {
+    return ensureSignIn(ADMIN_EMAIL, 'de beheerder');
 }
 
 const DATA_PATHS = {
@@ -1741,6 +1745,7 @@ async function handleLogin() {
     
     sessionStorage.removeItem('rooster_logged_out');
     if (user.admin && !(await ensureAdminSignIn())) return;
+    if (user.editor && !user.admin && !(await ensureSignIn(user.email, 'de editor'))) return;
     enterApp(user);
 }
 
@@ -1920,17 +1925,20 @@ function renderAvailabilityMatrix() {
         const cells = services.map(s => {
             const key = s.date + '|' + s.time;
             const email = s.roles && s.roles[role];
+            const leerEmail = s.leerlingen && s.leerlingen[role];
+            const leerNaam = leerEmail ? ((allTeam.find(x => x.email === leerEmail) || {}).name || leerEmail) : '';
+            const leerLine = leerEmail ? `<br><small style="color: #7d6608; font-weight: normal;">+ ${firstName(leerNaam)} (opleiding)</small>` : '';
             if (!email) {
                 if (role === 'Senior') {
-                    return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; color: #aaa; cursor: pointer;">–</td>`;
+                    return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; color: #aaa; cursor: pointer;">–${leerLine}</td>`;
                 }
-                return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold; cursor: pointer;">+ Nodig</td>`;
+                return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold; cursor: pointer;">+ Nodig${leerLine}</td>`;
             }
             const m = allTeam.find(x => x.email === email);
             const name = m ? firstName(m.name) : email;
             const blocked = blockedOn(email, s.date);
             return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'};">
-                        <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>${blocked ? '<br><small style="color: #c0392b; font-weight: normal;">' + blockoutReason(email, s.date) + '</small>' : ''}
+                        <span style="color: ${blocked ? '#c0392b' : '#2B5A7A'}; font-weight: bold;">${blocked ? '⚠️ ' : ''}${name}</span>${blocked ? '<br><small style="color: #c0392b; font-weight: normal;">' + blockoutReason(email, s.date) + '</small>' : ''}${leerLine}
                     </td>`;
         }).join('');
         const label = role === 'Video' ? 'Video (livestream)' : role;
@@ -1948,10 +1956,11 @@ function renderAvailabilityMatrix() {
 }
 
 // ===== Persoon inplannen vanuit de matrix =====
-function openMatrixPicker(key, role) {
+function openMatrixPicker(key, role, mode) {
     const idx = findServiceIndex(key);
     if (idx < 0) return;
     const s = allServices[idx];
+    const modus = mode === 'leerling' ? 'leerling' : 'ervaren';
     const people = allTeam
         .filter(m => !m.admin && m.role && m.role !== 'Pending')
         .sort((a, b) => {
@@ -1960,14 +1969,19 @@ function openMatrixPicker(key, role) {
             return aM - bM || (a.name || '').localeCompare(b.name || '');
         });
     window._matrixPeople = people;
+    window._matrixMode = modus;
 
     const d = new Date(s.date + 'T00:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const label = role === 'Video' ? 'Video (livestream)' : role;
-    let buttons = '';
+    const knop = (naam, actief, actie) => `<button onclick="${actie}" style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${actief ? '#2B5A7A' : '#dfe8f0'}; color: ${actief ? 'white' : '#2B5A7A'};">${naam}</button>`;
+    let buttons = `<div style="display: flex; gap: 6px; margin-bottom: 10px;">
+        ${knop('Ervaren', modus === 'ervaren', `openMatrixPicker('${key}', '${role}', 'ervaren')`)}
+        ${knop('Opleiding', modus === 'leerling', `openMatrixPicker('${key}', '${role}', 'leerling')`)}
+    </div>`;
     people.forEach((m, i) => {
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
         const roleNote = (m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')';
-        buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: none; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold; border: 1px solid #ddd;">
+        buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold;">
                     ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet: ' + blockoutReason(m.email, s.date) : ''}
                 </button>`;
     });
@@ -1999,20 +2013,30 @@ function matrixPick(key, role, i) {
     if (idx < 0) { closeMatrixPicker(); return; }
     const s = allServices[idx];
     s.roles = s.roles || {};
+    s.leerlingen = s.leerlingen || {};
+    const modus = window._matrixMode || 'ervaren';
 
     if (i < 0) {
         s.roles[role] = '';
+        s.leerlingen[role] = '';
     } else {
         const m = (window._matrixPeople || [])[i];
         if (!m) return;
-        const otherRole = Object.keys(s.roles).find(r => r !== role && s.roles[r] === m.email);
-        if (otherRole) {
-            showModal('Let op', m.name + ' staat al op deze dienst als ' + otherRole + '.', [{ text: 'OK', action: closeModal }]);
+        const elders = [];
+        Object.keys(s.roles).forEach(r => {
+            if ((r !== role || modus === 'leerling') && s.roles[r] === m.email) elders.push(r);
+        });
+        Object.keys(s.leerlingen).forEach(r => {
+            if ((r !== role || modus === 'ervaren') && s.leerlingen[r] === m.email) elders.push(r + ' (opleiding)');
+        });
+        if (elders.length) {
+            showModal('Let op', m.name + ' staat al op deze dienst als ' + elders.join(', ') + '.', [{ text: 'OK', action: closeModal }]);
             return;
         }
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
         if (blocked && !confirm(m.name + ' heeft aangegeven niet te kunnen op deze datum.\n\nToch inplannen?')) return;
-        s.roles[role] = m.email;
+        if (modus === 'leerling') s.leerlingen[role] = m.email;
+        else s.roles[role] = m.email;
     }
 
     saveData('services', allServices);
@@ -2228,6 +2252,12 @@ function mailAllForService(key) {
         .filter(([r, e]) => e)
         .map(([r, e]) => ({ role: r, member: allTeam.find(m => m.email === e) }))
         .filter(x => x.member);
+    Object.entries(s.leerlingen || {})
+        .filter(([r, e]) => e)
+        .forEach(([r, e]) => {
+            const mem = allTeam.find(m => m.email === e);
+            if (mem) ingedeeld.push({ role: r + ' (opleiding)', member: mem });
+        });
     if (!ingedeeld.length) {
         showModal('Let op', 'Er zijn nog geen ingedeelde personen bij deze dienst.', [{ text: 'OK', action: closeModal }]);
         return;

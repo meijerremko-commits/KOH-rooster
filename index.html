@@ -740,7 +740,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.46';
+const APP_VERSION = '1.47';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1839,7 +1839,7 @@ function switchAdminTab(tab) {
 function renderRoleOverview() {
     const host = document.getElementById('roleOverview');
     if (!host) return;
-    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht'];
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dates = [...new Set(allServices.map(s => s.date))]
@@ -2643,7 +2643,7 @@ function addService() {
     }
     
     const roles = {};
-    ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
         roles[role] = '';
     });
     
@@ -2733,7 +2733,7 @@ function editService(key) {
             <label>📝 Notitie voor teamleden</label>
             <textarea id="editNotes" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;">${s.notes || ''}</textarea>
         </div>
-        ${['Video', 'Geluid', 'Multimedia', 'Licht'].map(role => {
+        ${['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].map(role => {
             // Display name met extra info voor Video
             const displayRole = role === 'Video' ? 'Video (livestream)' : role;
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
@@ -2777,7 +2777,7 @@ async function saveServiceEdit(key) {
     allServices[idx].desc = document.getElementById('editDesc').value;
     allServices[idx].notes = document.getElementById('editNotes').value.trim();
     
-    ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
@@ -2789,7 +2789,7 @@ async function saveServiceEdit(key) {
     // Nieuw ingedeelde personen: mail aanbieden
     const service = allServices[idx];
     const buttons = [];
-    ['Video', 'Geluid', 'Multimedia', 'Licht'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
         const email = service.roles[role];
         if (email && email !== oldRoles[role]) {
             const member = allTeam.find(m => m.email === email);

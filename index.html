@@ -740,7 +740,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = 'v42 - Senior in matrix';
+const APP_VERSION = '1.44';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1150,9 +1150,16 @@ Object.keys(DATA_PATHS).forEach(key => {
             dataReady = true;
             console.log('✓ Data geladen uit Firebase');
             const savedEmail = sessionStorage.getItem('rooster_session_email');
+            const remembered = localStorage.getItem('rooster_remembered_user');
             if (savedEmail) {
                 const u = allTeam.find(m => m.email && m.email.toLowerCase() === savedEmail.toLowerCase());
                 if (u && u.role !== 'Pending') enterApp(u);
+            } else if (remembered && !sessionStorage.getItem('rooster_logged_out')) {
+                const r = JSON.parse(remembered);
+                document.getElementById('loginEmail').value = r.email;
+                document.getElementById('loginPin').value = r.pin;
+                document.getElementById('rememberMe').checked = true;
+                handleLogin();
             }
         }
         refreshAfterRemoteChange();
@@ -1732,6 +1739,7 @@ async function handleLogin() {
         localStorage.removeItem('rooster_remembered_user');
     }
     
+    sessionStorage.removeItem('rooster_logged_out');
     if (user.admin && !(await ensureAdminSignIn())) return;
     enterApp(user);
 }
@@ -1769,6 +1777,7 @@ function biometricLogin() {
 
 function handleLogout() {
     sessionStorage.removeItem('rooster_session_email');
+    sessionStorage.setItem('rooster_logged_out', '1');
     currentUser = null;
     
     // Data blijft in geheugen; de live-verbinding houdt het actueel
@@ -2210,6 +2219,37 @@ function renderTeamList() {
     document.getElementById('teamListAdmin').innerHTML = html || '<p style="color: #999;">Geen team-leden</p>';
 }
 
+// Eén mail naar alle ingedeelden van een dienst (adressen in BCC, dus niet zichtbaar voor elkaar)
+function mailAllForService(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
+    const s = allServices[idx];
+    const ingedeeld = Object.entries(s.roles || {})
+        .filter(([r, e]) => e)
+        .map(([r, e]) => ({ role: r, member: allTeam.find(m => m.email === e) }))
+        .filter(x => x.member);
+    if (!ingedeeld.length) {
+        showModal('Let op', 'Er zijn nog geen ingedeelde personen bij deze dienst.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const emails = [...new Set(ingedeeld.map(x => x.member.email))];
+    const dag = formatDutchDate(s.date);
+    const regels = ingedeeld.map(x => '- ' + x.member.name + ' (' + (x.role === 'Video' ? 'Video (livestream)' : x.role) + ')').join('\n');
+    const subject = 'Indeling ' + dag + ' om ' + s.time + ' uur';
+    const body =
+        'Beste teamleden,\n\n' +
+        'Hierbij de indeling voor ' + dag + ' om ' + s.time + ' uur' + (s.desc ? ' (' + s.desc + ')' : '') + ':\n\n' +
+        regels + '\n\n' +
+        (s.notes ? 'Let op: ' + s.notes + '\n\n' : '') +
+        'Kun je niet? Geef dit dan zo snel mogelijk door in de app, zodat we iemand anders kunnen zoeken.\n\n' +
+        'Met vriendelijke groet,\n' +
+        'Remko Meijer';
+    const link = 'mailto:?bcc=' + encodeURIComponent(emails.join(',')) +
+        '&subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+    window.location.href = link;
+}
+
 function renderServicesList() {
     const html = allServices.map((s, idx) => `
         <div class="service-card">
@@ -2224,6 +2264,7 @@ function renderServicesList() {
                     ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                    <button onclick="mailAllForService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px; background: #27AE60;">✉️ Mail alle ingedeelden</button>
                     <button onclick="editService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
                     <button class="danger" onclick="deleteService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>

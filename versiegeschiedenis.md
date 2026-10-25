@@ -3,7 +3,13 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.46 (huidig)
+## 1.48 (huidig)
+- Senior kan ook op een technische plek staan (zelfde persoon)
+
+## 1.47
+- Senior toegevoegd aan de dienst-bewerking en de dienstlijst
+
+## 1.46
 - Editor kan diensten aanvullen (eigen Firebase-login, geen verwijderen)
 
 ## 1.45

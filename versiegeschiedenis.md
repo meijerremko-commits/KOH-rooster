@@ -3,7 +3,13 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.50 (huidig)
+## 1.52 (huidig)
+- Blokkeringen van dagen in het verleden worden automatisch opgeruimd (door de beheerder)
+
+## 1.51
+- Editor ziet ook de beschikbaarheidsmatrix (zelfde weergave als de beheerder)
+
+## 1.50
 - Block-outs op het overzicht zijn aanklikbaar: wie, wanneer en waarom
 
 ## 1.49

@@ -508,9 +508,9 @@
                     <div class="stat-number" id="serviceCount">0</div>
                     <div class="stat-label">Diensten</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="showBlockoutOverview()" style="cursor: pointer;" title="Bekijk wie wanneer niet kan">
                     <div class="stat-number" id="blockoutCount">0</div>
-                    <div class="stat-label">Block-outs</div>
+                    <div class="stat-label">Block-outs <small style="opacity: 0.7;">(tik voor details)</small></div>
                 </div>
             </div>
 
@@ -582,6 +582,7 @@
         <div class="card" id="cardBeschikbaarheid">
             <h2>Beschikbaarheid</h2>
             <p style="color: #666; margin-bottom: 15px; font-size: 13px;">Geef hier de datums aan waarop je niet kunt draaien.</p>
+            <div id="myMaxBox" style="margin: 10px 0;"></div>
             <button class="primary" onclick="openBlockoutModal()" style="margin-bottom: 15px;">+ Block-out toevoegen</button>
             <div id="myBlockouts"></div>
         </div>
@@ -740,7 +741,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.48';
+const APP_VERSION = '1.50';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1123,6 +1124,30 @@ function attachPhoneListener() {
 auth.onAuthStateChanged(u => {
     if (u && u.email === ADMIN_EMAIL) attachPhoneListener();
 });
+
+// ===== MAXIMUM PER MAAND PER LID =====
+const MAX_PATH = 'rooster/maxPerMaand';
+let memberMax = {};
+
+function maxFor(memberId) {
+    return memberMax[memberId] !== undefined ? memberMax[memberId] : 1;
+}
+
+function setMyMax(value) {
+    if (!currentUser || !currentUser.id) return;
+    const n = Number(value);
+    memberMax[currentUser.id] = n;
+    db.ref(MAX_PATH + '/' + currentUser.id).set(n).catch(err => {
+        console.error('Maximum opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van je maximum is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
+    renderTeamView();
+}
+
+db.ref(MAX_PATH).on('value', snap => {
+    memberMax = snap.val() || {};
+    refreshAfterRemoteChange();
+}, err => console.error('Maximum lezen mislukt:', err));
 
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
@@ -2035,6 +2060,13 @@ function matrixPick(key, role, i) {
         }
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
         if (blocked && !confirm(m.name + ' heeft aangegeven niet te kunnen op deze datum.\n\nToch inplannen?')) return;
+        if (modus === 'ervaren' && role !== 'Senior') {
+            const maand = s.date.slice(0, 7);
+            const aantal = allServices.filter(x => x !== s && x.date.slice(0, 7) === maand &&
+                Object.entries(x.roles || {}).some(([r, e]) => e === m.email && r !== 'Senior')).length;
+            const max = Number(maxFor(m.id));
+            if (max > 0 && aantal + 1 > max && !confirm(m.name + ' draait deze maand al ' + aantal + ' keer. Het maximum is ' + max + '.\n\nToch inplannen?')) return;
+        }
         if (modus === 'leerling') s.leerlingen[role] = m.email;
         else s.roles[role] = m.email;
     }
@@ -2043,6 +2075,47 @@ function matrixPick(key, role, i) {
     closeMatrixPicker();
     renderAvailabilityMatrix();
     renderServicesList();
+}
+
+// Overzicht: wie heeft wanneer en waarom aangegeven niet te kunnen
+function showBlockoutOverview() {
+    const naam = email => {
+        const m = allTeam.find(x => x.email && x.email.toLowerCase() === (email || '').toLowerCase());
+        return m ? m.name : email;
+    };
+    const lijst = [...allBlockouts].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    let rijen = '';
+    if (!lijst.length) {
+        rijen = '<p style="color: #999;">Er zijn nog geen block-outs.</p>';
+    } else {
+        const per = {};
+        lijst.forEach(b => { (per[b.date] = per[b.date] || []).push(b); });
+        Object.keys(per).forEach(datum => {
+            const dag = formatDutchDate(datum);
+            rijen += `<div style="margin: 12px 0 4px; font-weight: bold; color: #2B5A7A;">${dag} <span style="font-weight: normal; color: #888; font-size: 12px;">(${per[datum].length})</span></div>`;
+            per[datum].forEach(b => {
+                const gemaakt = b.created ? new Date(b.created).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+                rijen += `<div style="padding: 6px 8px; margin: 3px 0; border-left: 3px solid #E74C3C; background: #fff5f5; border-radius: 4px;">
+                    <strong>${naam(b.email)}</strong>
+                    <div style="font-size: 13px; color: #333;">${b.reason || '–'}</div>
+                    ${gemaakt ? `<div style="font-size: 11px; color: #888;">aangegeven op ${gemaakt}</div>` : ''}
+                </div>`;
+            });
+        });
+    }
+    let overlay = document.getElementById('blockoutOverview');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'blockoutOverview';
+    overlay.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+            <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto;">
+                <h2 style="margin-top: 0; color: #2B5A7A;">Block-outs</h2>
+                ${rijen}
+                <button onclick="document.getElementById('blockoutOverview').remove()" style="width: 100%; padding: 12px; margin-top: 12px; border: none; border-radius: 6px; background: #2B5A7A; color: white; font-weight: bold; cursor: pointer;">Sluiten</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
 }
 
 function renderAdminDashboard() {
@@ -2462,7 +2535,23 @@ function renderTeamView() {
             }, 800);
         }
     }
+    renderMyMax();
     showTeamTab(currentTeamTab);
+}
+
+function renderMyMax() {
+    const box = document.getElementById('myMaxBox');
+    if (!box || !currentUser || !currentUser.id) return;
+    const huidig = Number(maxFor(currentUser.id));
+    let opties = '';
+    [[0, 'geen maximum'], [1, '1 keer per maand'], [2, '2 keer per maand'], [3, '3 keer per maand'], [4, '4 keer per maand']].forEach(([v, t]) => {
+        opties += `<option value="${v}" ${huidig === v ? 'selected' : ''}>${t}</option>`;
+    });
+    box.innerHTML = `
+        <div style="padding: 10px; border-radius: 6px; background: #f8fbff; border: 1px solid #ddd;">
+            <label style="font-weight: bold; color: #2B5A7A;">Ik wil maximaal draaien:</label>
+            <select onchange="setMyMax(this.value)" style="margin-left: 8px; padding: 6px;">${opties}</select>
+        </div>`;
 }
 
 function saveReminderSettings() {

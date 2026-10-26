@@ -3,7 +3,14 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.48 (huidig)
+## 1.50 (huidig)
+- Block-outs op het overzicht zijn aanklikbaar: wie, wanneer en waarom
+
+## 1.49
+- Maximum aantal keer per maand per lid (instelbaar bij Beschikbaarheid, standaard 1)
+- Waarschuwing in de matrix bij inplannen boven het maximum
+
+## 1.48
 - Senior kan ook op een technische plek staan (zelfde persoon)
 
 ## 1.47

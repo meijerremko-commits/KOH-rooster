@@ -741,7 +741,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.52';
+const APP_VERSION = '1.53';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1922,7 +1922,7 @@ function renderRoleOverview() {
         host.innerHTML = '<p style="color: #999;">Geen komende diensten.</p>';
         return;
     }
-    const members = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
+    const members = allTeam.filter(m => (!m.admin || (m.email || '').toLowerCase() === ADMIN_EMAIL) && m.role && m.role !== 'Pending');
     const label = r => r === 'Video' ? 'Video (livestream)' : r;
     const nameOf = email => {
         const m = allTeam.find(x => x.email === email);
@@ -1979,7 +1979,7 @@ function renderAvailabilityMatrix() {
         el.innerHTML = '<p style="color: #999;">Geen komende diensten.</p>';
         return;
     }
-    const people = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending');
+    const people = allTeam.filter(m => (!m.admin || (m.email || '').toLowerCase() === ADMIN_EMAIL) && m.role && m.role !== 'Pending');
     const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'];
     const firstName = n => (n || '').split(' ')[0];
     const blockedOn = (email, date) => allBlockouts.some(b => b.email === email && b.date === date);
@@ -2035,7 +2035,7 @@ function openMatrixPicker(key, role, mode) {
     const s = allServices[idx];
     const modus = mode === 'leerling' ? 'leerling' : 'ervaren';
     const people = allTeam
-        .filter(m => !m.admin && m.role && m.role !== 'Pending')
+        .filter(m => (!m.admin || (m.email || '').toLowerCase() === ADMIN_EMAIL) && m.role && m.role !== 'Pending')
         .sort((a, b) => {
             const aM = (a.role === role || a.role === 'Techniek Lead') ? 0 : 1;
             const bM = (b.role === role || b.role === 'Techniek Lead') ? 0 : 1;
@@ -2053,7 +2053,7 @@ function openMatrixPicker(key, role, mode) {
     </div>`;
     people.forEach((m, i) => {
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
-        const roleNote = (m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')';
+        const roleNote = m.admin ? ' (beheerder)' : ((m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')');
         buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold;">
                     ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet: ' + blockoutReason(m.email, s.date) : ''}
                 </button>`;

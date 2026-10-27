@@ -3,7 +3,10 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.52 (huidig)
+## 1.53 (huidig)
+- Beheerder kan zichzelf inplannen in de matrix
+
+## 1.52
 - Blokkeringen van dagen in het verleden worden automatisch opgeruimd (door de beheerder)
 - Beheerder krijgt een overzicht van wijzigingen door anderen (bijv. de editor) bij het inloggen
 

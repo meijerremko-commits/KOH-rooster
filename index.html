@@ -1004,6 +1004,15 @@ function saveServicesDiff(value) {
     oldById.forEach((_, id) => { if (!newIds.has(id)) updates[id] = null; });
     list.forEach(s => { if (oldById.get(s.id) !== canonical(s)) updates[s.id] = s; });
 
+    if (auth.currentUser && auth.currentUser.email) {
+        Object.keys(updates).forEach(id => {
+            const item = updates[id];
+            const oudItem = (lastSynced.services || []).find(x => x.id === id);
+            const actie = item === null ? 'verwijderd' : (oldById.has(id) ? 'gewijzigd' : 'toegevoegd');
+            const dienst = item ? (item.date + ' ' + item.time) : (oudItem ? (oudItem.date + ' ' + oudItem.time) : '');
+            db.ref('rooster/log').push({ when: new Date().toISOString(), door: auth.currentUser.email, actie: actie, dienst: dienst }).catch(() => {});
+        });
+    }
     lastSynced.services = list;
     console.log('[DIENST] op server schrijven:', Object.keys(updates).length, 'wijzigingen', updates);
     if (Object.keys(updates).length) {
@@ -1132,6 +1141,7 @@ auth.onAuthStateChanged(u => {
     if (u && u.email === ADMIN_EMAIL) {
         attachPhoneListener();
         db.ref(DATA_PATHS.blockouts).once('value', snap => readBlockouts(snap));
+        setTimeout(showEditorChanges, 1500);
     }
 });
 
@@ -1158,6 +1168,34 @@ db.ref(MAX_PATH).on('value', snap => {
     memberMax = snap.val() || {};
     refreshAfterRemoteChange();
 }, err => console.error('Maximum lezen mislukt:', err));
+
+// Overzicht van wijzigingen door anderen (bijv. de editor) sinds het laatste bezoek van de beheerder
+function showEditorChanges() {
+    const seen = localStorage.getItem('rooster_log_seen') || '1970-01-01T00:00:00.000Z';
+    db.ref('rooster/log').limitToLast(300).once('value', snap => {
+        const alle = Object.values(snap.val() || {});
+        const nieuw = alle.filter(x => x && x.when > seen && x.door !== ADMIN_EMAIL);
+        localStorage.setItem('rooster_log_seen', new Date().toISOString());
+        if (!nieuw.length) return;
+        const regels = nieuw.sort((a, b) => a.when.localeCompare(b.when)).map(x => {
+            const tijd = new Date(x.when).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            return `<div style="padding: 6px 0; border-bottom: 1px solid #eee;"><strong>${tijd}</strong> · ${x.door}<br><span style="color: #555;">dienst ${x.actie}: ${x.dienst || '–'}</span></div>`;
+        }).join('');
+        let overlay = document.getElementById('changesOverlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.id = 'changesOverlay';
+        overlay.innerHTML = `
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+                <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto;">
+                    <h2 style="margin-top: 0; color: #2B5A7A;">Wijzigingen sinds je laatste bezoek</h2>
+                    ${regels}
+                    <button onclick="document.getElementById('changesOverlay').remove()" style="width: 100%; padding: 12px; margin-top: 12px; border: none; border-radius: 6px; background: #2B5A7A; color: white; font-weight: bold; cursor: pointer;">Sluiten</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    });
+}
 
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {

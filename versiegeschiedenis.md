@@ -3,7 +3,10 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.53 (huidig)
+## 1.54 (huidig)
+- Nieuwe rol Ondersteuning (vaste rol, zonder vaste plek in de matrix)
+
+## 1.53
 - Beheerder kan zichzelf inplannen in de matrix
 
 ## 1.52

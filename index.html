@@ -445,6 +445,7 @@
                 <option value="Multimedia">Multimedia</option>
                 <option value="Licht">Licht</option>
                 <option value="Senior">Senior (regisseur)</option>
+                <option value="Ondersteuning">Ondersteuning</option>
                 <option value="Weet ik nog niet">Weet ik nog niet</option>
             </select>
         </div>
@@ -457,6 +458,7 @@
                 <option value="Multimedia">Multimedia</option>
                 <option value="Licht">Licht</option>
                 <option value="Senior">Senior (regisseur)</option>
+                <option value="Ondersteuning">Ondersteuning</option>
             </select>
         </div>
         <div class="form-group">
@@ -741,7 +743,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.53';
+const APP_VERSION = '1.54';
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1912,7 +1914,7 @@ function switchAdminTab(tab) {
 function renderRoleOverview() {
     const host = document.getElementById('roleOverview');
     if (!host) return;
-    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'];
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dates = [...new Set(allServices.map(s => s.date))]
@@ -1980,7 +1982,7 @@ function renderAvailabilityMatrix() {
         return;
     }
     const people = allTeam.filter(m => (!m.admin || (m.email || '').toLowerCase() === ADMIN_EMAIL) && m.role && m.role !== 'Pending');
-    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'];
+    const roles = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'];
     const firstName = n => (n || '').split(' ')[0];
     const blockedOn = (email, date) => allBlockouts.some(b => b.email === email && b.date === date);
 
@@ -2002,7 +2004,7 @@ function renderAvailabilityMatrix() {
             const leerNaam = leerEmail ? ((allTeam.find(x => x.email === leerEmail) || {}).name || leerEmail) : '';
             const leerLine = leerEmail ? `<br><small style="color: #7d6608; font-weight: normal;">+ ${firstName(leerNaam)} (opleiding)</small>` : '';
             if (!email) {
-                if (role === 'Senior') {
+                if (role === 'Senior' || role === 'Ondersteuning') {
                     return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; color: #aaa; cursor: pointer;">–${leerLine}</td>`;
                 }
                 return `<td onclick="openMatrixPicker('${key}', '${role}')" style="padding: 8px; text-align: center; background: #fff5f5; color: #c0392b; font-weight: bold; cursor: pointer;">+ Nodig${leerLine}</td>`;
@@ -2097,7 +2099,7 @@ function matrixPick(key, role, i) {
         if (!m) return;
         const elders = [];
         Object.keys(s.roles).forEach(r => {
-            if ((r !== role || modus === 'leerling') && s.roles[r] === m.email && r !== 'Senior' && role !== 'Senior') elders.push(r);
+            if ((r !== role || modus === 'leerling') && s.roles[r] === m.email && r !== 'Senior' && r !== 'Ondersteuning' && role !== 'Senior' && role !== 'Ondersteuning') elders.push(r);
         });
         Object.keys(s.leerlingen).forEach(r => {
             if ((r !== role || modus === 'ervaren') && s.leerlingen[r] === m.email) elders.push(r + ' (opleiding)');
@@ -2108,10 +2110,10 @@ function matrixPick(key, role, i) {
         }
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
         if (blocked && !confirm(m.name + ' heeft aangegeven niet te kunnen op deze datum.\n\nToch inplannen?')) return;
-        if (modus === 'ervaren' && role !== 'Senior') {
+        if (modus === 'ervaren' && role !== 'Senior' && role !== 'Ondersteuning') {
             const maand = s.date.slice(0, 7);
             const aantal = allServices.filter(x => x !== s && x.date.slice(0, 7) === maand &&
-                Object.entries(x.roles || {}).some(([r, e]) => e === m.email && r !== 'Senior')).length;
+                Object.entries(x.roles || {}).some(([r, e]) => e === m.email && r !== 'Senior' && r !== 'Ondersteuning')).length;
             const max = Number(maxFor(m.id));
             if (max > 0 && aantal + 1 > max && !confirm(m.name + ' draait deze maand al ' + aantal + ' keer. Het maximum is ' + max + '.\n\nToch inplannen?')) return;
         }
@@ -2780,7 +2782,7 @@ function addService() {
     }
     
     const roles = {};
-    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'].forEach(role => {
         roles[role] = '';
     });
     
@@ -2870,7 +2872,7 @@ function editService(key) {
             <label>📝 Notitie voor teamleden</label>
             <textarea id="editNotes" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 60px;">${s.notes || ''}</textarea>
         </div>
-        ${['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].map(role => {
+        ${['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'].map(role => {
             // Display name met extra info voor Video
             const displayRole = role === 'Video' ? 'Video (livestream)' : role;
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
@@ -2914,7 +2916,7 @@ async function saveServiceEdit(key) {
     allServices[idx].desc = document.getElementById('editDesc').value;
     allServices[idx].notes = document.getElementById('editNotes').value.trim();
     
-    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'].forEach(role => {
         allServices[idx].roles[role] = document.getElementById('role_' + role).value;
     });
     
@@ -2926,7 +2928,7 @@ async function saveServiceEdit(key) {
     // Nieuw ingedeelde personen: mail aanbieden
     const service = allServices[idx];
     const buttons = [];
-    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior'].forEach(role => {
+    ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'].forEach(role => {
         const email = service.roles[role];
         if (email && email !== oldRoles[role]) {
             const member = allTeam.find(m => m.email === email);
@@ -3042,8 +3044,8 @@ function editTeamMember(email) {
             renderAdminDashboard();
         }
     } else if (options === '3') {
-        const choice = prompt(member.name + ' - kies een rol:\n1 = Video (livestream)\n2 = Geluid\n3 = Multimedia\n4 = Licht\n5 = Techniek Lead\n6 = Geen rol\n7 = Senior (regisseur)', '');
-        const map = { '1': 'Video', '2': 'Geluid', '3': 'Multimedia', '4': 'Licht', '5': 'Techniek Lead', '6': 'Geen rol', '7': 'Senior' };
+        const choice = prompt(member.name + ' - kies een rol:\n1 = Video (livestream)\n2 = Geluid\n3 = Multimedia\n4 = Licht\n5 = Techniek Lead\n6 = Geen rol\n7 = Senior (regisseur)\n8 = Ondersteuning', '');
+        const map = { '1': 'Video', '2': 'Geluid', '3': 'Multimedia', '4': 'Licht', '5': 'Techniek Lead', '6': 'Geen rol', '7': 'Senior', '8': 'Ondersteuning' };
         if (choice && map[choice.trim()]) {
             member.role = map[choice.trim()];
             saveData('team', allTeam);

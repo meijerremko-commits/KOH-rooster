@@ -743,7 +743,30 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '1.54';
+const APP_VERSION = '2.0';
+document.addEventListener('DOMContentLoaded', () => {
+    const dienstenBtn = document.querySelector("button[onclick=\"switchAdminTab('services')\"]");
+    if (dienstenBtn && !document.querySelector("button[onclick^=\"switchAdminTab('afs')\"]")) {
+        const b = document.createElement('button');
+        b.className = 'tab-btn';
+        b.textContent = '📅 Afspraken';
+        b.setAttribute('onclick', "switchAdminTab('afs'); renderAfsAdmin();");
+        dienstenBtn.insertAdjacentElement('afterend', b);
+    }
+    const matrixTab = document.getElementById('matrixTab');
+    if (matrixTab && !document.getElementById('afsTab')) {
+        const div = document.createElement('div');
+        div.id = 'afsTab';
+        div.className = 'tab-content';
+        div.innerHTML = '<div id="afsContent"></div>';
+        matrixTab.insertAdjacentElement('afterend', div);
+    }
+    const card = document.getElementById('cardDiensten');
+    if (card && !document.getElementById('myAfspraken')) {
+        card.insertAdjacentHTML('afterbegin', '<div id="myAfspraken"></div>');
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     const tag = document.createElement('div');
     tag.textContent = 'versie ' + APP_VERSION;
@@ -1198,6 +1221,167 @@ function showEditorChanges() {
         document.body.appendChild(overlay);
     });
 }
+
+// ===== AFSPRAKEN (teamoverleg e.d.) =====
+const AFS_PATH = 'rooster/afspraken';
+const ANT_PATH = 'rooster/antwoorden';
+let afspraken = {};
+let antwoorden = {};
+
+function afsTodayStr() {
+    const n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+}
+
+function uitgenodigd(a, memberId) {
+    return a.iedereen === true || !!(a.genodigden && a.genodigden[memberId]);
+}
+
+function setAfspraakAntwoord(aid, status, reden) {
+    if (!currentUser || !currentUser.id) return;
+    const item = { status: status, reden: reden || '', when: new Date().toISOString() };
+    antwoorden[aid] = antwoorden[aid] || {};
+    antwoorden[aid][currentUser.id] = item;
+    db.ref(ANT_PATH + '/' + aid + '/' + currentUser.id).set(item).catch(err => {
+        console.error('Antwoord opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van je antwoord is mislukt. Probeer het opnieuw.', [{ text: 'OK', action: closeModal }]);
+    });
+    renderMyAfspraken();
+}
+
+function afsKanNiet(aid) {
+    const reden = prompt('Reden (optioneel):', '');
+    if (reden === null) return;
+    setAfspraakAntwoord(aid, 'komt niet', reden.trim());
+}
+
+function renderMyAfspraken() {
+    const box = document.getElementById('myAfspraken');
+    if (!box || !currentUser || !currentUser.id) return;
+    const vandaag = afsTodayStr();
+    const lijst = Object.entries(afspraken)
+        .map(([id, a]) => Object.assign({ id: id }, a))
+        .filter(a => a.date >= vandaag && uitgenodigd(a, currentUser.id))
+        .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time));
+    if (!lijst.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<h3 style="color: #2B5A7A; margin: 0 0 8px;">Afspraken</h3>' + lijst.map(a => {
+        const mijn = (antwoorden[a.id] || {})[currentUser.id];
+        let status = 'Nog niet gereageerd';
+        let kleur = '#999';
+        if (mijn && mijn.status === 'komt') { status = 'Je komt'; kleur = '#27AE60'; }
+        if (mijn && mijn.status === 'komt niet') { status = 'Je kan niet' + (mijn.reden ? ' (' + mijn.reden + ')' : ''); kleur = '#c0392b'; }
+        return `<div style="padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-left: 4px solid #2B5A7A; border-radius: 8px; background: #f8fbff;">
+            <strong>${a.titel}</strong><br>
+            <span style="font-size: 13px;">${formatDutchDate(a.date)} • ${a.time} uur</span>
+            ${a.omschrijving ? '<div style="font-size: 13px; color: #555; margin-top: 4px;">' + a.omschrijving + '</div>' : ''}
+            <div style="font-size: 13px; font-weight: bold; color: ${kleur}; margin: 6px 0;">${status}</div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="setAfspraakAntwoord('${a.id}', 'komt')" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: #27AE60; color: white; font-weight: bold; cursor: pointer;">✅ Ik kom</button>
+                <button onclick="afsKanNiet('${a.id}')" style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: #E74C3C; color: white; font-weight: bold; cursor: pointer;">❌ Ik kan niet</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function afsToggleLeden() {
+    const kies = document.querySelector('input[name="afsScope"]:checked').value === 'kies';
+    document.getElementById('afsLedenBox').style.display = kies ? 'block' : 'none';
+}
+
+function afsCreate() {
+    const titel = document.getElementById('afsTitel').value.trim();
+    const datum = document.getElementById('afsDatum').value;
+    const tijd = document.getElementById('afsTijd').value;
+    const omschr = document.getElementById('afsOmschr').value.trim();
+    const scope = document.querySelector('input[name="afsScope"]:checked').value;
+    if (!titel || !datum || !tijd) {
+        showModal('Let op', 'Vul titel, datum en tijd in.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const a = { titel: titel, date: datum, time: tijd, omschrijving: omschr, aangemaakt: new Date().toISOString() };
+    if (scope === 'iedereen') {
+        a.iedereen = true;
+    } else {
+        a.genodigden = {};
+        document.querySelectorAll('.afsLid:checked').forEach(c => { a.genodigden[c.value] = true; });
+        if (!Object.keys(a.genodigden).length) {
+            showModal('Let op', 'Kies minstens één persoon, of kies "Iedereen".', [{ text: 'OK', action: closeModal }]);
+            return;
+        }
+    }
+    const id = db.ref(AFS_PATH).push().key;
+    a.id = id;
+    db.ref(AFS_PATH + '/' + id).set(a).then(() => {
+        document.getElementById('afsTitel').value = '';
+        document.getElementById('afsOmschr').value = '';
+        showModal('Klaar', '✅ Afspraak aangemaakt.', [{ text: 'OK', action: closeModal }]);
+    }).catch(err => {
+        console.error('Afspraak opslaan mislukt:', err);
+        showModal('Fout', '❌ Opslaan van de afspraak is mislukt.', [{ text: 'OK', action: closeModal }]);
+    });
+}
+
+function afsDelete(aid) {
+    if (!confirm('Afspraak verwijderen? De antwoorden worden ook verwijderd.')) return;
+    Promise.all([db.ref(AFS_PATH + '/' + aid).remove(), db.ref(ANT_PATH + '/' + aid).remove()])
+        .catch(err => console.error('Verwijderen mislukt:', err));
+}
+
+function renderAfsAdmin() {
+    const box = document.getElementById('afsContent');
+    if (!box) return;
+    const leden = allTeam.filter(m => !m.admin && m.role && m.role !== 'Pending')
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const lijst = Object.entries(afspraken)
+        .map(([id, a]) => Object.assign({ id: id }, a))
+        .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time));
+    const ledenHtml = leden.map(m => `<label style="display: block; font-size: 13px; padding: 2px 0;"><input type="checkbox" class="afsLid" value="${m.id}"> ${m.name}</label>`).join('');
+    let html = `<h2 style="color: #2B5A7A; margin-top: 0;">Afspraken</h2>
+        <div style="background: #f8fbff; padding: 14px; border-radius: 8px; border: 1px solid #ddd;">
+            <div class="form-group"><label>Titel</label><input type="text" id="afsTitel" placeholder="bijv. Teamoverleg"></div>
+            <div class="form-group"><label>Datum</label><input type="date" id="afsDatum"></div>
+            <div class="form-group"><label>Tijd</label><input type="time" id="afsTijd" value="19:30"></div>
+            <div class="form-group"><label>Omschrijving (optioneel)</label><textarea id="afsOmschr" rows="2"></textarea></div>
+            <div class="form-group">
+                <label>Wie uitnodigen?</label>
+                <label style="display: block;"><input type="radio" name="afsScope" value="iedereen" checked onchange="afsToggleLeden()"> Iedereen in het team</label>
+                <label style="display: block;"><input type="radio" name="afsScope" value="kies" onchange="afsToggleLeden()"> Kies personen</label>
+                <div id="afsLedenBox" style="display: none; max-height: 160px; overflow-y: auto; margin-top: 6px; padding: 6px; border: 1px solid #eee; border-radius: 6px;">${ledenHtml}</div>
+            </div>
+            <button onclick="afsCreate()" style="width: 100%; padding: 12px; border: none; border-radius: 6px; background: #2B5A7A; color: white; font-weight: bold; cursor: pointer;">Afspraak aanmaken</button>
+        </div>`;
+    lijst.forEach(a => {
+        const ant = antwoorden[a.id] || {};
+        const uit = leden.filter(m => uitgenodigd(a, m.id));
+        const komt = uit.filter(m => ant[m.id] && ant[m.id].status === 'komt');
+        const kanNiet = uit.filter(m => ant[m.id] && ant[m.id].status === 'komt niet');
+        const geen = uit.filter(m => !ant[m.id]);
+        const rij = (m, kleur, tekst) => `<div style="font-size: 13px; padding: 3px 0;"><span style="color: ${kleur}; font-weight: bold;">${tekst}</span> ${m.name}${ant[m.id] && ant[m.id].reden ? ' – ' + ant[m.id].reden : ''}</div>`;
+        html += `<div style="margin-top: 14px; padding: 12px; border: 1px solid #ddd; border-left: 4px solid #2B5A7A; border-radius: 8px; background: white;">
+            <strong>${a.titel}</strong> <span style="color: #666; font-size: 13px;">${formatDutchDate(a.date)} • ${a.time}</span>
+            ${a.omschrijving ? '<div style="font-size: 12px; color: #555; margin: 4px 0;">' + a.omschrijving + '</div>' : ''}
+            <div style="font-size: 12px; color: #555; margin: 6px 0;">Komt: ${komt.length} · Kan niet: ${kanNiet.length} · Geen antwoord: ${geen.length}</div>
+            ${komt.map(m => rij(m, '#27AE60', 'Komt')).join('')}
+            ${kanNiet.map(m => rij(m, '#c0392b', 'Kan niet')).join('')}
+            ${geen.map(m => rij(m, '#999', 'Geen antwoord')).join('')}
+            <button onclick="afsDelete('${a.id}')" style="margin-top: 8px; padding: 6px 12px; border: none; border-radius: 6px; background: #E74C3C; color: white; cursor: pointer; font-size: 12px;">Verwijder afspraak</button>
+        </div>`;
+    });
+    box.innerHTML = html;
+}
+
+// Luisteren naar afspraken en antwoorden
+db.ref(AFS_PATH).on('value', snap => {
+    afspraken = snap.val() || {};
+    renderAfsAdmin();
+    renderMyAfspraken();
+}, err => console.error('Afspraken lezen mislukt:', err));
+
+db.ref(ANT_PATH).on('value', snap => {
+    antwoorden = snap.val() || {};
+    renderAfsAdmin();
+    renderMyAfspraken();
+}, err => console.error('Antwoorden lezen mislukt:', err));
 
 // Live luisteren naar wijzigingen
 Object.keys(DATA_PATHS).forEach(key => {
@@ -2586,6 +2770,7 @@ function renderTeamView() {
         }
     }
     renderMyMax();
+    renderMyAfspraken();
     showTeamTab(currentTeamTab);
 }
 

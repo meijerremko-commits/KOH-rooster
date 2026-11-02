@@ -3,7 +3,12 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 1.54 (huidig)
+## 2.0 (huidig)
+- Afspraken (zoals teamoverleg): beheerder nodigt iedereen of een selectie uit
+- Leden kunnen komen of niet komen, met optionele reden
+- Beheerder ziet per afspraak wie komt, niet kan, of nog niet heeft gereageerd
+
+## 1.54
 - Nieuwe rol Ondersteuning (vaste rol, zonder vaste plek in de matrix)
 
 ## 1.53

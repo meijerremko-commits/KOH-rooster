@@ -3,7 +3,10 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 2.0 (huidig)
+## 2.1 (huidig)
+- Klik op een dienst in het overzicht: wie draait welke rol, en wie kan niet
+
+## 2.0
 - Afspraken (zoals teamoverleg): beheerder nodigt iedereen of een selectie uit
 - Leden kunnen komen of niet komen, met optionele reden
 - Beheerder ziet per afspraak wie komt, niet kan, of nog niet heeft gereageerd

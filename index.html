@@ -743,7 +743,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 document.addEventListener('DOMContentLoaded', () => {
     const dienstenBtn = document.querySelector("button[onclick=\"switchAdminTab('services')\"]");
     if (dienstenBtn && !document.querySelector("button[onclick^=\"switchAdminTab('afs')\"]")) {
@@ -2352,6 +2352,64 @@ function showBlockoutOverview() {
     document.body.appendChild(overlay);
 }
 
+// Dienst-overzicht: wie draait welke rol, en wie kan niet
+function showDienstDetail(key) {
+    const idx = findServiceIndex(key);
+    if (idx < 0) return;
+    const s = allServices[idx];
+    const naam = email => {
+        const m = allTeam.find(x => x.email && x.email.toLowerCase() === (email || '').toLowerCase());
+        return m ? m.name : email;
+    };
+    const rollen = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'];
+    const labelRol = r => r === 'Video' ? 'Video (livestream)' : r;
+    const niet = allBlockouts.filter(b => b.date === s.date);
+
+    let rijen = rollen.map(r => {
+        const e = s.roles && s.roles[r];
+        const l = s.leerlingen && s.leerlingen[r];
+        const tekst = e ? naam(e) : (r === 'Senior' || r === 'Ondersteuning' ? '–' : '<span style="color: #c0392b; font-weight: bold;">Nodig</span>');
+        const leer = l ? `<div style="font-size: 12px; color: #7d6608;">+ ${naam(l)} (opleiding)</div>` : '';
+        return `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+            <span style="color: #2B5A7A; font-weight: bold;">${labelRol(r)}</span>
+            <span style="text-align: right;">${tekst}${leer}</span>
+        </div>`;
+    }).join('');
+
+    const nietHtml = niet.length
+        ? niet.map(b => `<div style="font-size: 13px; padding: 3px 0;"><strong>${naam(b.email)}</strong>${b.reason ? ' – ' + b.reason : ''}</div>`).join('')
+        : '<div style="font-size: 13px; color: #888;">Niemand heeft zich afgemeld.</div>';
+
+    let overlay = document.getElementById('dienstDetail');
+    if (overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'dienstDetail';
+    overlay.innerHTML = `
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+            <div style="background: white; border-radius: 12px; padding: 20px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto;">
+                <h2 style="margin-top: 0; color: #2B5A7A;">${s.desc || 'Dienst'}</h2>
+                <p style="color: #555; margin-top: 0;">${formatDutchDate(s.date)} • ${s.time} uur</p>
+                ${s.notes ? '<div style="background: #f0f8ff; padding: 8px; border-radius: 6px; border-left: 3px solid #2B5A7A; font-size: 13px; margin-bottom: 10px;">📝 ' + s.notes + '</div>' : ''}
+                <h3 style="color: #2B5A7A; margin: 12px 0 4px;">Wie draait</h3>
+                ${rijen}
+                <h3 style="color: #2B5A7A; margin: 14px 0 4px;">Niet beschikbaar</h3>
+                ${nietHtml}
+                <div style="display: flex; gap: 8px; margin-top: 16px;">
+                    <button onclick="openDienstInDiensten('${key}')" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: #2B5A7A; color: white; font-weight: bold; cursor: pointer;">Bewerk</button>
+                    <button onclick="document.getElementById('dienstDetail').remove()" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: #95A5A6; color: white; font-weight: bold; cursor: pointer;">Sluiten</button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function openDienstInDiensten(key) {
+    const o = document.getElementById('dienstDetail');
+    if (o) o.remove();
+    switchAdminTab('services');
+    editService(key);
+}
+
 function renderAdminDashboard() {
     document.getElementById('teamCount').textContent = allTeam.filter(m => !m.admin && m.role !== 'Pending').length;
     document.getElementById('serviceCount').textContent = allServices.length;
@@ -2370,7 +2428,7 @@ function renderAdminDashboard() {
     const upcoming = allServices.filter(s => new Date(s.date) >= new Date()).slice(0, 5);
     document.getElementById('upcomingServices').innerHTML = upcoming.length ? 
         upcoming.map(s => `
-            <div class="service-card">
+            <div class="service-card" onclick="showDienstDetail('${s.date}|${s.time}')" style="cursor: pointer;">
                 <strong>${s.desc || 'Dienst'}</strong><br>
                 <small>${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small>
             </div>

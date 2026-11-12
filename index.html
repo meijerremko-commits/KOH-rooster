@@ -2668,11 +2668,12 @@ function updateMaandOpties() {
 }
 
 function ensureDienstBar() {
-    const btn = document.querySelector('button[onclick="openAddServiceModal()"]');
-    if (!btn) return;
-    const bar = btn.parentElement;
-    if (!bar.dataset.sticky) {
-        bar.dataset.sticky = '1';
+    const tab = document.getElementById('servicesTab');
+    if (!tab) return;
+    let bar = document.getElementById('dienstBar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'dienstBar';
         bar.style.position = 'sticky';
         bar.style.top = '0';
         bar.style.zIndex = '50';
@@ -2682,13 +2683,17 @@ function ensureDienstBar() {
         bar.style.flexWrap = 'wrap';
         bar.style.gap = '8px';
         bar.style.alignItems = 'center';
-    }
-    if (!document.getElementById('dienstMaand')) {
         const sel = document.createElement('select');
         sel.id = 'dienstMaand';
         sel.style.padding = '8px';
         sel.onchange = () => renderServicesList();
-        bar.insertBefore(sel, bar.firstChild);
+        bar.appendChild(sel);
+        tab.insertBefore(bar, tab.firstChild);
+        // De knoppen verhuizen naar de balk
+        tab.querySelectorAll(':scope > button').forEach(b => {
+            b.style.marginBottom = '0';
+            bar.appendChild(b);
+        });
     }
     updateMaandOpties();
 }

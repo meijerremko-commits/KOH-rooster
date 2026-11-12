@@ -1327,6 +1327,33 @@ function afsDelete(aid) {
         .catch(err => console.error('Verwijderen mislukt:', err));
 }
 
+// Mail met de uitnodiging voor een afspraak (adressen in BCC)
+function mailAfspraak(aid) {
+    const a = afspraken[aid];
+    if (!a) return;
+    const ontvangers = allTeam.filter(m => m.email && !m.admin && m.role && m.role !== 'Pending' && uitgenodigd(a, m.id));
+    if (!ontvangers.length) {
+        showModal('Let op', 'Er zijn nog geen uitgenodigde leden bij deze afspraak.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const emails = [...new Set(ontvangers.map(m => m.email))];
+    const dag = formatDutchDate(a.date);
+    const subject = 'Uitnodiging: ' + a.titel + ' op ' + dag;
+    const body =
+        'Beste teamleden,\n\n' +
+        'Hierbij een uitnodiging voor:\n\n' +
+        a.titel + '\n' +
+        dag + ' om ' + a.time + ' uur\n' +
+        (a.omschrijving ? a.omschrijving + '\n' : '') +
+        '\nKun je erbij zijn? Geef dit dan aan in de app, bij Mijn diensten.\n' +
+        'https://meijerremko-commits.github.io/KOH-rooster/\n\n' +
+        'Met vriendelijke groet,\n' +
+        'Remko Meijer';
+    window.location.href = 'mailto:?bcc=' + encodeURIComponent(emails.join(',')) +
+        '&subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+}
+
 function renderAfsAdmin() {
     const box = document.getElementById('afsContent');
     if (!box) return;
@@ -1364,7 +1391,8 @@ function renderAfsAdmin() {
             ${komt.map(m => rij(m, '#27AE60', 'Komt')).join('')}
             ${kanNiet.map(m => rij(m, '#c0392b', 'Kan niet')).join('')}
             ${geen.map(m => rij(m, '#999', 'Geen antwoord')).join('')}
-            <button onclick="afsDelete('${a.id}')" style="margin-top: 8px; padding: 6px 12px; border: none; border-radius: 6px; background: #E74C3C; color: white; cursor: pointer; font-size: 12px;">Verwijder afspraak</button>
+            <button onclick="mailAfspraak('${a.id}')" style="margin-top: 8px; margin-right: 6px; padding: 6px 12px; border: none; border-radius: 6px; background: #27AE60; color: white; cursor: pointer; font-size: 12px;">✉️ Mail uitnodiging</button>
+                        <button onclick="afsDelete('${a.id}')" style="margin-top: 8px; padding: 6px 12px; border: none; border-radius: 6px; background: #E74C3C; color: white; cursor: pointer; font-size: 12px;">Verwijder afspraak</button>
         </div>`;
     });
     box.innerHTML = html;
@@ -2152,9 +2180,49 @@ function blockoutReason(email, date) {
     return b ? (b.reason || '') : '';
 }
 
+// Maandkeuze en mailknop boven de beschikbaarheidsmatrix
+function ensureMatrixBar() {
+    const content = document.getElementById('matrixContent');
+    if (!content || document.getElementById('matrixBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'matrixBar';
+    bar.style.display = 'flex';
+    bar.style.flexWrap = 'wrap';
+    bar.style.gap = '8px';
+    bar.style.alignItems = 'center';
+    bar.style.marginBottom = '10px';
+    const sel = document.createElement('select');
+    sel.id = 'matrixMaand';
+    sel.style.padding = '8px';
+    const btn = document.createElement('button');
+    btn.textContent = '✉️ Mail deze maand';
+    btn.style.background = '#27AE60';
+    btn.style.fontSize = '12px';
+    btn.onclick = () => mailMaand(document.getElementById('matrixMaand').value);
+    bar.appendChild(sel);
+    bar.appendChild(btn);
+    content.parentElement.insertBefore(bar, content);
+}
+
+function updateMatrixMaandOpties() {
+    const sel = document.getElementById('matrixMaand');
+    if (!sel) return;
+    const huidig = sel.value;
+    const maanden = [...new Set(allServices.map(s => s.date.slice(0, 7)))].sort();
+    let opties = '<option value="">Kies maand</option>';
+    maanden.forEach(mm => {
+        const label = new Date(mm + '-01T00:00:00').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+        opties += `<option value="${mm}">${label}</option>`;
+    });
+    sel.innerHTML = opties;
+    sel.value = huidig || (document.getElementById('dienstMaand') ? document.getElementById('dienstMaand').value : '');
+}
+
 function renderAvailabilityMatrix() {
     const el = document.getElementById('matrixContent');
     if (!el) return;
+    ensureMatrixBar();
+    updateMatrixMaandOpties();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const services = allServices
@@ -2688,6 +2756,13 @@ function ensureDienstBar() {
         sel.style.padding = '8px';
         sel.onchange = () => renderServicesList();
         bar.appendChild(sel);
+        const mb = document.createElement('button');
+        mb.id = 'dienstMaandMail';
+        mb.textContent = '✉️ Mail deze maand';
+        mb.style.background = '#27AE60';
+        mb.style.fontSize = '12px';
+        mb.onclick = () => mailMaand(document.getElementById('dienstMaand').value);
+        bar.appendChild(mb);
         tab.insertBefore(bar, tab.firstChild);
         // De knoppen verhuizen naar de balk
         tab.querySelectorAll(':scope > button').forEach(b => {
@@ -2700,28 +2775,95 @@ function ensureDienstBar() {
 
 function renderServicesList() {
     ensureDienstBar();
-    const html = servicesFiltered().map((s, idx) => `
-        <div class="service-card">
-            <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
-                <div style="flex: 1;">
-                    <strong>${s.desc || 'Dienst'}</strong><br>
-                    <small style="color: #666;">${new Date(s.date).toLocaleDateString('nl-NL')} • ${s.time}</small><br>
-                    ${s.roles ? Object.entries(s.roles).map(([role, email]) => {
-                        const person = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
-                        return `<small><strong>${role}:</strong> ${person?.name || '–'}</small><br>`;
-                    }).join('') : ''}
-                    ${s.notes ? `<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #2B5A7A; font-size: 12px;"><strong>📝</strong> ${s.notes}</div>` : ''}
+    const open = window._openRegels || (window._openRegels = new Set());
+    const rollen = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'];
+    const naam = e => {
+        const m = e ? allTeam.find(x => x.email && x.email.toLowerCase() === e.toLowerCase()) : null;
+        return m ? m.name : '';
+    };
+    const html = servicesFiltered().map(s => {
+        const key = s.date + '|' + s.time;
+        const id = 'dRegel_' + (s.date + s.time).replace(/[^0-9A-Za-z]/g, '');
+        const samenvatting = rollen.map(r => { const n = naam(s.roles && s.roles[r]); return n ? n.split(' ')[0] : null; })
+            .filter(Boolean).join(', ') || 'nog niemand ingedeeld';
+        const details = rollen.map(r => {
+            const n = naam(s.roles && s.roles[r]);
+            const l = naam(s.leerlingen && s.leerlingen[r]);
+            return `<div style="font-size: 13px; padding: 2px 0;"><strong>${r === 'Video' ? 'Video (livestream)' : r}:</strong> ${n || '<span style="color: #c0392b;">–</span>'}${l ? ' <span style="color: #7d6608;">+ ' + l + ' (opleiding)</span>' : ''}</div>`;
+        }).join('');
+        return `
+        <div style="border: 1px solid #ddd; border-left: 4px solid #2B5A7A; border-radius: 8px; margin: 6px 0; background: white;">
+            <div onclick="toggleDienstRegel('${id}')" style="padding: 10px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px;">
+                <div>
+                    <strong>${formatDutchDate(s.date)}</strong> • ${s.time} <span style="color: #666;">${s.desc || ''}</span>
+                    <div style="font-size: 12px; color: #555;">${samenvatting}</div>
                 </div>
-                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
-                    <button onclick="mailAllForService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px; background: #27AE60;">✉️ Mail alle ingedeelden</button>
-                    <button onclick="editService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
-                    <button class="danger" onclick="deleteService('${s.date}|${s.time}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
+                <span style="color: #2B5A7A; font-size: 18px;">▾</span>
+            </div>
+            <div id="${id}" style="display: ${open.has(id) ? 'block' : 'none'}; padding: 0 10px 10px;">
+                ${details}
+                ${s.notes ? '<div style="background: #f0f8ff; padding: 8px; border-radius: 4px; margin-top: 6px; font-size: 12px;"><strong>📝</strong> ' + s.notes + '</div>' : ''}
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                    <button onclick="mailAllForService('${key}')" style="padding: 6px 12px; font-size: 12px; background: #27AE60;">✉️ Mail ingedeelden</button>
+                    <button onclick="editService('${key}')" style="padding: 6px 12px; font-size: 12px;">Bewerk</button>
+                    <button class="danger" onclick="deleteService('${key}')" style="padding: 6px 12px; font-size: 12px;">Verwijder</button>
                 </div>
             </div>
-        </div>
-    `).join('');
-    
+        </div>`;
+    }).join('');
     document.getElementById('servicesListAdmin').innerHTML = html || '<p style="color: #999;">Geen diensten</p>';
+}
+
+// Uitklappen van één dienst; blijft open na verversen
+function toggleDienstRegel(id) {
+    const open = window._openRegels || (window._openRegels = new Set());
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (open.has(id)) { open.delete(id); el.style.display = 'none'; }
+    else { open.add(id); el.style.display = 'block'; }
+}
+
+// Eén mail naar iedereen die in een maand ingedeeld is
+function mailMaand(maand) {
+    if (!maand) {
+        showModal('Let op', 'Kies eerst een maand.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const diensten = allServices.filter(s => s.date.slice(0, 7) === maand)
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const emails = new Set();
+    const naam = e => { const m = allTeam.find(x => x.email && x.email.toLowerCase() === e.toLowerCase()); return m ? m.name : e; };
+    const blokken = diensten.map(s => {
+        const kop = formatDutchDate(s.date) + ' om ' + s.time + ' uur' + (s.desc ? ' (' + s.desc + ')' : '') + ':';
+        const regels = [];
+        Object.entries(s.roles || {}).forEach(([r, e]) => {
+            if (!e) return;
+            emails.add(e.toLowerCase());
+            regels.push('- ' + naam(e) + ' (' + (r === 'Video' ? 'Video (livestream)' : r) + ')');
+        });
+        Object.entries(s.leerlingen || {}).forEach(([r, e]) => {
+            if (!e) return;
+            emails.add(e.toLowerCase());
+            regels.push('- ' + naam(e) + ' (' + r + ', opleiding)');
+        });
+        return kop + '\n' + (regels.length ? regels.join('\n') : '- nog niemand ingedeeld') + '\n';
+    }).join('\n');
+    if (!emails.size) {
+        showModal('Let op', 'Er zijn in deze maand nog geen ingedeelde personen.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+    const maandLabel = new Date(maand + '-01T00:00:00').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+    const subject = 'Indeling ' + maandLabel;
+    const body =
+        'Beste teamleden,\n\n' +
+        'Hierbij de indeling voor ' + maandLabel + ':\n\n' +
+        blokken + '\n' +
+        'Kun je niet? Geef dit dan zo snel mogelijk door in de app, zodat we iemand anders kunnen zoeken.\n\n' +
+        'Met vriendelijke groet,\n' +
+        'Remko Meijer';
+    window.location.href = 'mailto:?bcc=' + encodeURIComponent([...emails].join(',')) +
+        '&subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
 }
 
 // Zet of haalt de eigen blokkering voor één dienst (één tik)

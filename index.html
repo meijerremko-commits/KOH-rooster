@@ -743,7 +743,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 document.addEventListener('DOMContentLoaded', () => {
     const dienstenBtn = document.querySelector("button[onclick=\"switchAdminTab('services')\"]");
     if (dienstenBtn && !document.querySelector("button[onclick^=\"switchAdminTab('afs')\"]")) {
@@ -2239,7 +2239,7 @@ function openMatrixPicker(key, role, mode) {
     </div>`;
     people.forEach((m, i) => {
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
-        const roleNote = m.admin ? ' (beheerder)' : ((m.role === role || m.role === 'Techniek Lead') ? '' : ' (' + m.role + ')');
+        const roleNote = m.admin ? ' (beheerder)' : ' (' + m.role + ')';
         buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold;">
                     ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet: ' + blockoutReason(m.email, s.date) : ''}
                 </button>`;
@@ -2645,8 +2645,57 @@ function mailAllForService(key) {
     window.location.href = link;
 }
 
+// Diensten-tabblad: vaste balk met maandkeuze en de knop om een dienst toe te voegen
+function servicesFiltered() {
+    const m = (document.getElementById('dienstMaand') || {}).value || '';
+    return allServices.slice()
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+        .filter(s => !m || s.date.slice(0, 7) === m);
+}
+
+function updateMaandOpties() {
+    const sel = document.getElementById('dienstMaand');
+    if (!sel) return;
+    const huidig = sel.value;
+    const maanden = [...new Set(allServices.map(s => s.date.slice(0, 7)))].sort();
+    let opties = '<option value="">Alle maanden</option>';
+    maanden.forEach(mm => {
+        const label = new Date(mm + '-01T00:00:00').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+        opties += `<option value="${mm}">${label}</option>`;
+    });
+    sel.innerHTML = opties;
+    sel.value = huidig;
+}
+
+function ensureDienstBar() {
+    const btn = document.querySelector('button[onclick="openAddServiceModal()"]');
+    if (!btn) return;
+    const bar = btn.parentElement;
+    if (!bar.dataset.sticky) {
+        bar.dataset.sticky = '1';
+        bar.style.position = 'sticky';
+        bar.style.top = '0';
+        bar.style.zIndex = '50';
+        bar.style.background = '#f8fbff';
+        bar.style.padding = '8px 0';
+        bar.style.display = 'flex';
+        bar.style.flexWrap = 'wrap';
+        bar.style.gap = '8px';
+        bar.style.alignItems = 'center';
+    }
+    if (!document.getElementById('dienstMaand')) {
+        const sel = document.createElement('select');
+        sel.id = 'dienstMaand';
+        sel.style.padding = '8px';
+        sel.onchange = () => renderServicesList();
+        bar.insertBefore(sel, bar.firstChild);
+    }
+    updateMaandOpties();
+}
+
 function renderServicesList() {
-    const html = allServices.map((s, idx) => `
+    ensureDienstBar();
+    const html = servicesFiltered().map((s, idx) => `
         <div class="service-card">
             <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
                 <div style="flex: 1;">
@@ -3132,7 +3181,7 @@ function editService(key) {
                     <label>${displayRole}</label>
                     <select id="role_${role}">
                         <option value="">-- Selecteer --</option>
-                        ${roleMembers.map(m => `<option value="${m.email}" ${s.roles[role] === m.email ? 'selected' : ''}>${m.name}</option>`).join('')}
+                        ${roleMembers.map(m => `<option value="${m.email}" ${s.roles[role] === m.email ? 'selected' : ''}>${m.name} (${m.role})</option>`).join('')}
                     </select>
                 </div>
             `;

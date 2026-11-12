@@ -3,7 +3,14 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 2.1 (huidig)
+## 2.2 (huidig)
+- Diensten: maandkeuze, en de knop Dienst toevoegen blijft bovenaan staan
+
+## 2.2
+- Diensten: maandkeuze, en de knop Dienst toevoegen blijft bovenaan staan
+- Rol van elk lid staat achter de naam in de keuzelijsten (matrix en dienst-bewerking)
+
+## 2.1
 - Klik op een dienst in het overzicht: wie draait welke rol, en wie kan niet
 
 ## 2.0

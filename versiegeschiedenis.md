@@ -3,7 +3,11 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 2.2 (huidig)
+## 2.3 (huidig)
+- Groepsmails (diensten, maand, afspraken) krijgen techniek@kijkomhoog.com als CC
+- Beschikbaarheid blijft op de gekozen maand, en de horizontale positie blijft staan na een wijziging
+
+## 2.2
 - Diensten: compacte regels die uitklappen (details, Bewerk, Verwijder, Mail)
 - Eén knop Mail deze maand: mail naar iedereen die in die maand is ingedeeld (Diensten én Beschikbaarheid)
 - Afspraken: knop Mail uitnodiging (één mail naar alle uitgenodigden, BCC)

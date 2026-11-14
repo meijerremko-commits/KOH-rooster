@@ -743,7 +743,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 document.addEventListener('DOMContentLoaded', () => {
     const dienstenBtn = document.querySelector("button[onclick=\"switchAdminTab('services')\"]");
     if (dienstenBtn && !document.querySelector("button[onclick^=\"switchAdminTab('afs')\"]")) {
@@ -1349,7 +1349,7 @@ function mailAfspraak(aid) {
         'https://meijerremko-commits.github.io/KOH-rooster/\n\n' +
         'Met vriendelijke groet,\n' +
         'Remko Meijer';
-    window.location.href = 'mailto:?bcc=' + encodeURIComponent(emails.join(',')) +
+    window.location.href = 'mailto:?cc=techniek%40kijkomhoog.com&bcc=' + encodeURIComponent(emails.join(',')) +
         '&subject=' + encodeURIComponent(subject) +
         '&body=' + encodeURIComponent(body);
 }
@@ -2221,14 +2221,17 @@ function updateMatrixMaandOpties() {
 function renderAvailabilityMatrix() {
     const el = document.getElementById('matrixContent');
     if (!el) return;
+    const _oud = el.querySelector('div[style*="overflow-x"]');
+    const _sl = _oud ? _oud.scrollLeft : 0;
     ensureMatrixBar();
     updateMatrixMaandOpties();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const gekozenMaand = (document.getElementById('matrixMaand') || {}).value || '';
     const services = allServices
-        .filter(s => new Date(s.date + 'T00:00:00') >= today)
+        .filter(s => gekozenMaand ? s.date.slice(0, 7) === gekozenMaand : new Date(s.date + 'T00:00:00') >= today)
         .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-        .slice(0, 12);
+        .slice(0, gekozenMaand ? 60 : 12);
     if (!services.length) {
         el.innerHTML = '<p style="color: #999;">Geen komende diensten.</p>';
         return;
@@ -2280,6 +2283,9 @@ function renderAvailabilityMatrix() {
             </table>
         </div>
         <p style="font-size: 12px; color: #666; margin-top: 8px;">Tik op een cel om iemand in te plannen. ⚠️ = heeft aangegeven niet te kunnen.</p>`;
+    const _nw = el.querySelector('div[style*="overflow-x"]');
+    if (_nw) _nw.scrollLeft = _sl;
+
 }
 
 // ===== Persoon inplannen vanuit de matrix =====
@@ -2707,7 +2713,7 @@ function mailAllForService(key) {
         'Kun je niet? Geef dit dan zo snel mogelijk door in de app, zodat we iemand anders kunnen zoeken.\n\n' +
         'Met vriendelijke groet,\n' +
         'Remko Meijer';
-    const link = 'mailto:?bcc=' + encodeURIComponent(emails.join(',')) +
+    const link = 'mailto:?cc=techniek%40kijkomhoog.com&bcc=' + encodeURIComponent(emails.join(',')) +
         '&subject=' + encodeURIComponent(subject) +
         '&body=' + encodeURIComponent(body);
     window.location.href = link;
@@ -2861,7 +2867,7 @@ function mailMaand(maand) {
         'Kun je niet? Geef dit dan zo snel mogelijk door in de app, zodat we iemand anders kunnen zoeken.\n\n' +
         'Met vriendelijke groet,\n' +
         'Remko Meijer';
-    window.location.href = 'mailto:?bcc=' + encodeURIComponent([...emails].join(',')) +
+    window.location.href = 'mailto:?cc=techniek%40kijkomhoog.com&bcc=' + encodeURIComponent([...emails].join(',')) +
         '&subject=' + encodeURIComponent(subject) +
         '&body=' + encodeURIComponent(body);
 }

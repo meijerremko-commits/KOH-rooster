@@ -3,7 +3,11 @@
 Werkwijze: kleine aanpassingen tellen mee in het tweede getal (1.44 → 1.45).
 Een grote aanpassing gaat naar het eerste getal (1.x → 2.0).
 
-## 2.3 (huidig)
+## 2.4 (huidig)
+- Bekwaamheden per lid (extra rollen, bij Team → Bewerk → 4)
+- Keuzelijsten tonen alleen mensen die de rol kunnen (met knop om iedereen te tonen)
+
+## 2.3
 - Groepsmails (diensten, maand, afspraken) krijgen techniek@kijkomhoog.com als CC
 - Beschikbaarheid blijft op de gekozen maand, en de horizontale positie blijft staan na een wijziging
 

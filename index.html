@@ -743,7 +743,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== VERSIE (controleer dit op elk apparaat) =====
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 document.addEventListener('DOMContentLoaded', () => {
     const dienstenBtn = document.querySelector("button[onclick=\"switchAdminTab('services')\"]");
     if (dienstenBtn && !document.querySelector("button[onclick^=\"switchAdminTab('afs')\"]")) {
@@ -2289,13 +2289,15 @@ function renderAvailabilityMatrix() {
 }
 
 // ===== Persoon inplannen vanuit de matrix =====
-function openMatrixPicker(key, role, mode) {
+function openMatrixPicker(key, role, mode, alle) {
     const idx = findServiceIndex(key);
     if (idx < 0) return;
     const s = allServices[idx];
     const modus = mode === 'leerling' ? 'leerling' : 'ervaren';
+    const toonAlle = alle === true;
     const people = allTeam
         .filter(m => (!m.admin || (m.email || '').toLowerCase() === ADMIN_EMAIL) && m.role && m.role !== 'Pending')
+        .filter(m => toonAlle || kanRol(m, role))
         .sort((a, b) => {
             const aM = (a.role === role || a.role === 'Techniek Lead') ? 0 : 1;
             const bM = (b.role === role || b.role === 'Techniek Lead') ? 0 : 1;
@@ -2313,12 +2315,13 @@ function openMatrixPicker(key, role, mode) {
     </div>`;
     people.forEach((m, i) => {
         const blocked = allBlockouts.some(b => b.email === m.email && b.date === s.date);
-        const roleNote = m.admin ? ' (beheerder)' : ' (' + m.role + ')';
+        const roleNote = m.admin ? ' (beheerder)' : ' (' + rollenVan(m).join(', ') + ')';
         buttons += `<button onclick="matrixPick('${key}', '${role}', ${i})" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: 1px solid #ddd; border-radius: 6px; text-align: left; cursor: pointer; background: ${blocked ? '#fff5f5' : '#f8fbff'}; color: #2B5A7A; font-weight: bold;">
                     ${m.name}${roleNote}${blocked ? ' ⚠️ kan niet: ' + blockoutReason(m.email, s.date) : ''}
                 </button>`;
     });
     buttons += `<button onclick="matrixPick('${key}', '${role}', -1)" style="display: block; width: 100%; margin: 14px 0 6px; padding: 10px; border: none; border-radius: 6px; background: #E74C3C; color: white; font-weight: bold; cursor: pointer;">Plek leegmaken</button>`;
+    if (!toonAlle) buttons += `<button onclick="openMatrixPicker('${key}', '${role}', '${modus}', true)" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: 1px solid #2B5A7A; border-radius: 6px; background: white; color: #2B5A7A; font-weight: bold; cursor: pointer;">Toon ook andere leden</button>`;
     buttons += `<button onclick="closeMatrixPicker()" style="display: block; width: 100%; margin: 6px 0; padding: 10px; border: none; border-radius: 6px; background: #95A5A6; color: white; font-weight: bold; cursor: pointer;">Annuleren</button>`;
 
     let overlay = document.getElementById('matrixPicker');
@@ -2717,6 +2720,18 @@ function mailAllForService(key) {
         '&subject=' + encodeURIComponent(subject) +
         '&body=' + encodeURIComponent(body);
     window.location.href = link;
+}
+
+// Mag deze persoon op deze rol? (hoofdrol, extra bekwaamheden, of Techniek Lead)
+function kanRol(m, role) {
+    if (role === 'Senior') return m.role === 'Senior' || m.role === 'Techniek Lead';
+    if (role === 'Ondersteuning') return m.role === 'Ondersteuning' || m.role === 'Techniek Lead';
+    return m.role === role || m.role === 'Techniek Lead' || (Array.isArray(m.bekwaam) && m.bekwaam.includes(role));
+}
+
+// Alle rollen/bekwaamheden van een lid, voor weergave
+function rollenVan(m) {
+    return [m.role].concat(Array.isArray(m.bekwaam) ? m.bekwaam : []).filter(x => x && x !== 'Pending' && x !== 'Geen rol');
 }
 
 // Diensten-tabblad: vaste balk met maandkeuze en de knop om een dienst toe te voegen
@@ -3261,6 +3276,11 @@ function addService() {
         }
     }
     
+    if (!servicesToAdd.length) {
+        showModal('Let op', 'Op deze datum en tijd staat al een dienst. Er is niets toegevoegd. Kies een andere tijd, of bewerk de bestaande dienst.', [{ text: 'OK', action: closeModal }]);
+        return;
+    }
+
     // Voeg allemaal toe
     allServices = allServices.concat(servicesToAdd);
     allServices.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
@@ -3324,7 +3344,7 @@ function editService(key) {
             // Voeg alle leden toe die deze rol hebben, plus Techniek Lead
             // Alle goedgekeurde leden tonen; leden met deze rol eerst
             const roleMembers = teamMembers
-                .filter(m => m.role !== 'Pending')
+                .filter(m => m.role !== 'Pending' && kanRol(m, role))
                 .sort((a, b) => {
                     const aMatch = (a.role === role || a.role === 'Techniek Lead') ? 0 : 1;
                     const bMatch = (b.role === role || b.role === 'Techniek Lead') ? 0 : 1;
@@ -3335,7 +3355,7 @@ function editService(key) {
                     <label>${displayRole}</label>
                     <select id="role_${role}">
                         <option value="">-- Selecteer --</option>
-                        ${roleMembers.map(m => `<option value="${m.email}" ${s.roles[role] === m.email ? 'selected' : ''}>${m.name} (${m.role})</option>`).join('')}
+                        ${roleMembers.map(m => `<option value="${m.email}" ${s.roles[role] === m.email ? 'selected' : ''}>${m.name} (${rollenVan(m).join(', ')})</option>`).join('')}
                     </select>
                 </div>
             `;
@@ -3479,7 +3499,7 @@ function editTeamMember(email) {
     const member = allTeam.find(m => m.email.toLowerCase() === email.toLowerCase());
     
     // Menu met opties
-    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Rol instellen', '1');
+    const options = prompt('Wat wil je doen?\n1 = Status wijzigen\n2 = PIN resetten\n3 = Rol instellen\n4 = Extra bekwaamheden', '1');
     
     if (options === '1') {
         const newStatus = prompt('Status:\n(leeg = geen)\n\nopties:\nexpert = Expert\ngood = Goed\ncompetent = Competent\nbeginner = Beginner\ntraining = In Training\nspecialized = Gespecialiseerd\nreserve = Reserve\nunsuitable = Niet Geschikt', member.status || '');
@@ -3498,6 +3518,14 @@ function editTeamMember(email) {
             renderTeamList();
             renderAdminDashboard();
         }
+    } else if (options === '4') {
+        const geldig = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning'];
+        const huidig = (Array.isArray(member.bekwaam) ? member.bekwaam : []).join(', ');
+        const invoer = prompt(member.name + ' - extra bekwaamheden (komma gescheiden).\n\nKies uit: ' + geldig.join(', '), huidig);
+        if (invoer === null) return;
+        member.bekwaam = invoer.split(',').map(x => x.trim()).filter(x => geldig.includes(x));
+        saveData('team', allTeam);
+        renderTeamList();
     } else if (options === '2') {
         const newPin = prompt('Nieuwe PIN voor ' + member.name + ':', '');
         if (newPin !== null && newPin.trim() !== '') {

@@ -2818,6 +2818,7 @@ function renderServicesList() {
         </div>`;
     }).join('');
     document.getElementById('servicesListAdmin').innerHTML = html || '<p style="color: #999;">Geen diensten</p>';
+    if (document.getElementById('matrixContent')) renderAvailabilityMatrix();
 }
 
 // Uitklappen van één dienst; blijft open na verversen

@@ -2722,16 +2722,18 @@ function mailAllForService(key) {
     window.location.href = link;
 }
 
-// Mag deze persoon op deze rol? (hoofdrol, extra bekwaamheden, of Techniek Lead)
-function kanRol(m, role) {
-    if (role === 'Senior') return m.role === 'Senior' || m.role === 'Techniek Lead';
-    if (role === 'Ondersteuning') return m.role === 'Ondersteuning' || m.role === 'Techniek Lead';
-    return m.role === role || m.role === 'Techniek Lead' || (Array.isArray(m.bekwaam) && m.bekwaam.includes(role));
+// Alle rollen van een lid: hoofdrol, voorkeur bij aanmelding, tweede rol, en extra bekwaamheden
+function rollenVan(m) {
+    const kandidaten = [m.role, m.voorkeurRol, m.tweedeRol].concat(Array.isArray(m.bekwaam) ? m.bekwaam : []);
+    const geldig = ['Video', 'Geluid', 'Multimedia', 'Licht', 'Senior', 'Ondersteuning', 'Techniek Lead'];
+    return [...new Set(kandidaten.filter(x => x && geldig.includes(x)))];
 }
 
-// Alle rollen/bekwaamheden van een lid, voor weergave
-function rollenVan(m) {
-    return [m.role].concat(Array.isArray(m.bekwaam) ? m.bekwaam : []).filter(x => x && x !== 'Pending' && x !== 'Geen rol');
+// Mag deze persoon op deze rol? (Techniek Lead kan overal; Senior/Ondersteuning alleen die rol)
+function kanRol(m, role) {
+    const rollen = rollenVan(m);
+    if (rollen.includes('Techniek Lead')) return true;
+    return rollen.includes(role);
 }
 
 // Diensten-tabblad: vaste balk met maandkeuze en de knop om een dienst toe te voegen
